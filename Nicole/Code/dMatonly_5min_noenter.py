@@ -1,24 +1,24 @@
 import pandas as pd
 import numpy as np
 import os
-from talib import STOCH
+# from talib import STOCH
 from pytz import timezone
 from datetime import datetime, date, time, timedelta
-from dateutil.relativedelta import relativedelta
+# from dateutil.relativedelta import relativedelta
 import threading
 
 
-#----------------------Constants-----------------------
+# ----------------------Constants-----------------------
 # timezone
 GMT = timezone('GMT+0')
 timezoneList = {'HKE': timezone('Asia/Hong_Kong'), 'NYMEX': timezone('US/Eastern'), 'TSX': timezone('Canada/Eastern'), 'ASX': timezone('Australia/Sydney'), 'FWB': timezone('CET'), 'LSE': timezone('Europe/London'), 'NYSE': timezone('US/Eastern')}
 closingTime = {'HKE': time(16), 'NYMEX': time(17,15), 'TSX': time(16), 'ASX': time(16), 'FWB': time(20), 'LSE': time(16,30), 'NYSE': time(16)}
 
-matFile = "M:\\Tanya\\dailyMatsuba\\CL1 COMDTY\\CL1 COMDTY_res2.csv"
+matFile = "../CL1 COMDTY Matsuba/CL1 COMDTY_res2.csv"
 
 HOST = "localhost"
 PORT = 8194
-#-------------------end of constants--------------------
+# -------------------end of constants--------------------
 
 class Strategy(threading.Thread):
     def __init__(self, poslimit, capital, stoploss, startdate, enddate, mat_dateList, mat_value):
@@ -38,10 +38,10 @@ class Strategy(threading.Thread):
                 break
         self.matdate = mat_dateList[sindex:eindex]
         self.matvalue = mat_value
-        self.marketFile = "M:\\Nicole\\BackTesting\\2016_04_15\\Market\\CL1_5min.csv"
-        self.resultPath = "M:\\Nicole\\BackTesting\\2016_04_15\\RunningResult\\Hika_5th_v0.2\\5min\\"+startdate.strftime('%Y%m%d')+'_'+enddate.strftime('%Y%m%d')+'\\noenter\\'
+        self.marketFile = "../MarketData/CL1_5min.csv"
+        self.marketFile = "../MarketData/CL1_5min2.csv"
+        self.resultPath = "../../Output"+startdate.strftime('%Y%m%d')+'_'+enddate.strftime('%Y%m%d')+'/'
         
-
 
     def prepareDirectory(self):   # prepare both database and backup folders
         if not os.path.exists(self.resultPath):
@@ -115,8 +115,8 @@ class Strategy(threading.Thread):
 
             # short bias, using target_high
             shortInfo.append([dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_high] + [0, self.shortPos, short_exitprice])
-            for price,size in target_high:
-                if price >= lowDict[dt]  and price <= highDict[dt]:
+            for price, size in target_high:
+                if price >= lowDict[dt] and price <= highDict[dt]:
                     short_exe.append([price, size])    # price > 0, size < 0
             if len(short_exe) != 0:
                 for price,size in short_exe:
@@ -148,18 +148,18 @@ class Strategy(threading.Thread):
 
             # long bias, using target_low
             longInfo.append([dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_low] + [0, self.longPos, long_exitprice])
-            for price,size in target_low:
+            for price, size in target_low:
                 if price >= lowDict[dt] and price <= highDict[dt]:
                     long_exe.append([price, size])    # price > 0, size > 0
             if len(long_exe) != 0:
-                for price,size in long_exe:
+                for price, size in long_exe:
                     if abs(self.netPos + size) <= self.poslimit:
                         self.longPos += size
                         self.netPos += size
                         longCF += 0-price*size
                         longInfo[-1][8] += size
                         longTrade.append([dt, price, size])
-                        while target_low.index([price,size]) != 0:
+                        while target_low.index([price, size]) != 0:
                             del target_low[0]
                             target_low.append([target_low[-1][0]-1, target_low[-1][1]+10])
                         target_low.remove([price,size])
