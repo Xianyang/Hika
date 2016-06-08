@@ -23,7 +23,7 @@ HOST = "localhost"
 PORT = 8194
 
 amount = {0:1, 1:1, 2:2, 3:4, 4:8}
-unit = 5
+unit = 10
 
 # -------------------end of constants--------------------
 
@@ -47,7 +47,7 @@ class Strategy(threading.Thread):
         self.matvalue = mat_value
         # self.marketFile = "./Nicole/MarketData/CL1_5min.csv"
         self.marketFile = "./Data/CL1 COMDTY_2016-01-01_2016-06-01_5Minutes.csv"
-        self.resultPath = "./Output_" + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '_Unit' + str(unit) + '/'
+        self.resultPath = "./Output/" + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '_Unit' + str(unit) + '/'
 
     def prepareDirectory(self):  # prepare both database and backup folders
         if not os.path.exists(self.resultPath):
