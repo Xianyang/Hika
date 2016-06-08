@@ -22,7 +22,8 @@ matFile = './Data/CL1 COMDTY_res2.csv'
 HOST = "localhost"
 PORT = 8194
 
-amount = {0:10, 1:10, 2:20, 3:40, 4:80}
+amount = {0:1, 1:1, 2:2, 3:4, 4:8}
+unit = 5
 
 # -------------------end of constants--------------------
 
@@ -46,7 +47,7 @@ class Strategy(threading.Thread):
         self.matvalue = mat_value
         # self.marketFile = "./Nicole/MarketData/CL1_5min.csv"
         self.marketFile = "./Data/CL1 COMDTY_2016-01-01_2016-06-01_5Minutes.csv"
-        self.resultPath = "./Output" + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '/'
+        self.resultPath = "./Output_" + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '_Unit' + str(unit) + '/'
 
     def prepareDirectory(self):  # prepare both database and backup folders
         if not os.path.exists(self.resultPath):
@@ -91,8 +92,8 @@ class Strategy(threading.Thread):
         for i in range(5):
             # target_high.append([mat_high + i, 0 - (i * 10 + 10)])
             # target_low.append([mat_low - i, i * 10 + 10])
-            target_high.append([mat_high + i, -amount[i]])
-            target_low.append([mat_low - i, amount[i]])
+            target_high.append([mat_high + i, -amount[i] * unit])
+            target_low.append([mat_low - i, amount[i] * unit])
 
         shortpnl, longpnl, shortreturn, longreturn = 0.0, 0.0, 0.0, 0.0
 
@@ -117,7 +118,7 @@ class Strategy(threading.Thread):
                 if opent in self.matdate:
                     mat_high = self.matvalue[opent][0]
                     # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
-                    target_high = [[mat_high + i, -amount[i]] for i in range(5)]
+                    target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
 
             if mat_low == 0:
                 if dt.time() >= time(18):
@@ -127,7 +128,7 @@ class Strategy(threading.Thread):
                 if opent in self.matdate:
                     mat_low = self.matvalue[opent][1]
                     # target_low = [[mat_low - i, (i * 10 + 10)] for i in range(5)]
-                    target_low = [[mat_low - i, amount[i]] for i in range(5)]
+                    target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
 
             # short bias, using target_high
             # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
@@ -153,12 +154,13 @@ class Strategy(threading.Thread):
                         target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
                     else:
                         newsize = self.poslimit - self.netPos
-                        self.shortPos += newsize
-                        self.netPos += newsize
-                        shortCF += 0 - price * newsize  # shortCF > 0
-                        shortInfo[-1][8] += newsize
-                        shortTrade.append([dt, price, newsize])
-                        target_high[target_high.index([price, size])][1] = size - newsize
+                        if newsize > 0.0:
+                            self.shortPos += newsize
+                            self.netPos += newsize
+                            shortCF += 0 - price * newsize  # shortCF > 0
+                            shortInfo[-1][8] += newsize
+                            shortTrade.append([dt, price, newsize])
+                            target_high[target_high.index([price, size])][1] = size - newsize
                         break
                 short_exitprice = abs(shortCF / self.shortPos) * (1 - self.stoploss)
                 short_exe = []
@@ -188,12 +190,13 @@ class Strategy(threading.Thread):
                         target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
                     else:
                         newsize = self.poslimit - self.netPos
-                        self.longPos += newsize
-                        self.netPos += newsize
-                        longCF += 0 - price * newsize
-                        longInfo[-1][8] += newsize
-                        longTrade.append([dt, price, newsize])
-                        target_low[target_low.index([price, size])][1] = size - newsize
+                        if newsize > 0.0:
+                            self.longPos += newsize
+                            self.netPos += newsize
+                            longCF += 0 - price * newsize
+                            longInfo[-1][8] += newsize
+                            longTrade.append([dt, price, newsize])
+                            target_low[target_low.index([price, size])][1] = size - newsize
                         break
                 long_exitprice = abs(longCF / self.longPos) * (1 + self.stoploss)
                 long_exe = []
@@ -220,7 +223,7 @@ class Strategy(threading.Thread):
                 if opent in self.matdate:
                     mat_high = self.matvalue[opent][0]
                     # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
-                    target_high = [[mat_high + i, -amount[i]] for i in range(5)]
+                    target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
                     for item in target_high:
                         if item[0] <= highDict[dt]:
                             target_high.remove(item)
@@ -251,7 +254,7 @@ class Strategy(threading.Thread):
                 if opent in self.matdate:
                     mat_low = self.matvalue[opent][1]
                     # target_low = [[mat_low - i, i * 10 + 10] for i in range(5)]
-                    target_low = [[mat_low - i, amount[i]] for i in range(5)]
+                    target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
                     for item in target_low:
                         if item[0] >= lowDict[dt]:
                             target_low.remove(item)
