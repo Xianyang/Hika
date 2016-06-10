@@ -79,6 +79,7 @@ class Strategy(threading.Thread):
             if dt > datetime.combine(self.enddate, time(17, 15)):
                 break
 
+        print ('%s seconds to read market file' % (timeToCount.time() - programStartTime))
         self.netPos = 0
         self.shortPos = 0
         shortInfo, shortTrade, shortPNL = [], [], []
@@ -353,6 +354,7 @@ if __name__ == "__main__":
     mat_dateList, mat_value = readMatsuba(matFile)
 
     programStartTime = timeToCount.time()
+
     print "dMatonly_5min.py running..."
     print "start date: " + startdate.strftime('%Y_%m_%d') + " end data: " + enddate.strftime('%Y_%m_%d')
 
