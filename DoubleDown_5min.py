@@ -6,6 +6,7 @@ from pytz import timezone
 from datetime import datetime, date, time, timedelta
 # from dateutil.relativedelta import relativedelta
 import threading
+import time as timeToCount
 
 # ----------------------Constants-----------------------
 # timezone
@@ -27,6 +28,7 @@ unit = 10
 
 # -------------------end of constants--------------------
 
+
 class Strategy(threading.Thread):
     def __init__(self, poslimit, capital, stoploss, startdate, enddate, mat_dateList, mat_value):
         threading.Thread.__init__(self)
@@ -36,10 +38,10 @@ class Strategy(threading.Thread):
         for i in range(1, len(mat_dateList)):
             dt_last = mat_dateList[i - 1]
             dt = mat_dateList[i]
-            if dt_last < startdate and dt >= startdate:
+            if dt_last < startdate <= dt:
                 self.startdate = dt
                 sindex = i
-            if dt_last <= enddate and dt > enddate:
+            if dt_last <= enddate < dt:
                 self.enddate = dt_last
                 eindex = i
                 break
@@ -70,7 +72,7 @@ class Strategy(threading.Thread):
         endDatetime = datetime.combine(self.enddate, time(17, 15))
         for i in csvfile.index:
             dt = datetime.strptime(csvfile.loc[i, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
-            if dt >= startDatetime and dt <= endDatetime:
+            if startDatetime <= dt <= endDatetime:
                 datetimeList.append(dt)
                 highDict[dt] = csvfile.loc[i, 'HIGH']
                 lowDict[dt] = csvfile.loc[i, 'LOW']
@@ -131,12 +133,14 @@ class Strategy(threading.Thread):
                     target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
 
             # short bias, using target_high
+            highPriceForDt = highDict[dt]
+            lowPriceForDt = lowDict[dt]
             # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
             shortInfo.append(
-                [dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_high] + [0, self.shortPos, short_exitprice])
+                [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, self.shortPos, short_exitprice])
             # if the candle covers the target, then add the target to short exercise
             for price, size in target_high:
-                if price >= lowDict[dt] and price <= highDict[dt]:
+                if lowPriceForDt <= price <= highPriceForDt:
                     short_exe.append([price, size])  # price > 0, size < 0
             if len(short_exe) != 0:
                 for price, size in short_exe:
@@ -169,9 +173,9 @@ class Strategy(threading.Thread):
 
             # long bias, using target_low
             longInfo.append(
-                [dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_low] + [0, self.longPos, long_exitprice])
+                [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, self.longPos, long_exitprice])
             for price, size in target_low:
-                if price >= lowDict[dt] and price <= highDict[dt]:
+                if lowPriceForDt <= price <= highPriceForDt:
                     long_exe.append([price, size])  # price > 0, size > 0
             if len(long_exe) != 0:
                 for price, size in long_exe:
@@ -204,7 +208,7 @@ class Strategy(threading.Thread):
                 longInfo[-1][10] = long_exitprice
 
             # short exit
-            if lowDict[dt] <= short_exitprice:
+            if lowPriceForDt <= short_exitprice:
                 exitorder = 0 - self.shortPos
                 self.shortPos = 0
                 self.netPos += exitorder
@@ -212,8 +216,7 @@ class Strategy(threading.Thread):
                 shortreturn += 1000 * shortpnl / self.capital
                 shortPNL.append([dt, shortCF, exitorder, short_exitprice, shortreturn])
                 shortInfo.append(
-                    [dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_high] + [exitorder, self.shortPos,
-                                                                                     short_exitprice])
+                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [exitorder, self.shortPos, short_exitprice])
                 shortTrade.append([dt, short_exitprice, exitorder])
                 shortCF = 0.0
                 if dt.time() >= time(18):
@@ -225,7 +228,7 @@ class Strategy(threading.Thread):
                     # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
                     target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
                     for item in target_high:
-                        if item[0] <= highDict[dt]:
+                        if item[0] <= highPriceForDt:
                             target_high.remove(item)
                             # target_high.append([target_high[-1][0] + 1, target_high[-1][1] - 10])
                             target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
@@ -236,14 +239,14 @@ class Strategy(threading.Thread):
                     target_high = [[9999, 0] for i in range(5)]
 
             # long exit
-            if highDict[dt] >= long_exitprice:
+            if highPriceForDt >= long_exitprice:
                 exitorder = 0 - self.longPos
                 self.longPos = 0
                 self.netPos += exitorder
                 longpnl += longCF - exitorder * long_exitprice
                 longreturn += 1000 * longpnl / self.capital
                 longPNL.append([dt, longCF, exitorder, long_exitprice, longreturn])
-                longInfo.append([dt, highDict[dt], lowDict[dt]] + [i[0] for i in target_low] + [exitorder, self.longPos,
+                longInfo.append([dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [exitorder, self.longPos,
                                                                                                 long_exitprice])
                 longTrade.append([dt, long_exitprice, exitorder])
                 longCF = 0.0
@@ -256,7 +259,7 @@ class Strategy(threading.Thread):
                     # target_low = [[mat_low - i, i * 10 + 10] for i in range(5)]
                     target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
                     for item in target_low:
-                        if item[0] >= lowDict[dt]:
+                        if item[0] >= lowPriceForDt:
                             target_low.remove(item)
                             # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
                             target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
@@ -271,7 +274,7 @@ class Strategy(threading.Thread):
                 shortPNL.append([dt, shortCF, self.shortPos, 0, 0])
                 longPNL.append([dt, longCF, self.longPos, 0, 0])
             else:
-                if datetimeList[datetimeList.index(dt) + 1].time() >= time(18) and dt.time() < time(18):
+                if dt.time() < time(18) <= datetimeList[datetimeList.index(dt) + 1].time():
                     totalResult.append(
                         [dt, self.shortPos, self.longPos, self.netPos, shortpnl, longpnl, shortreturn, longreturn])
                     shortpnl, longpnl, shortreturn, longreturn = 0, 0, 0, 0
@@ -282,7 +285,7 @@ class Strategy(threading.Thread):
             opent = datetime.combine(dt, time(18))
             closet = datetime.combine(dt, time(17, 15)) + timedelta(1)
             for item in datetimeList:
-                if item >= opent and item < closet:
+                if opent <= item < closet:
                     count += 1
                     break
             dt += timedelta(1)
@@ -349,8 +352,9 @@ if __name__ == "__main__":
     enddate = datetime(2016, 5, 30).date()
     mat_dateList, mat_value = readMatsuba(matFile)
 
+    programStartTime = timeToCount.time()
     print "dMatonly_5min.py running..."
-    print "start date: " + startdate.strftime('%Y_%m_%d')
+    print "start date: " + startdate.strftime('%Y_%m_%d') + " end data: " + enddate.strftime('%Y_%m_%d')
 
     threads = []
     '''
@@ -372,4 +376,5 @@ if __name__ == "__main__":
     else:
         print "no date starts."
     print "Waiting for finish..."
+    print ('This program take %s seconds to run' % (timeToCount.time() - programStartTime))
 
