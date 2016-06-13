@@ -23,3 +23,22 @@
 ![](./net_position.png)
 
 ###analysis
+- Position
+	
+	From 1-5 to 1-22, the price keep going down, so the program keeps taking long position. The program takes a total 512 position for unit 1 and 600 position for unit10 (hit the limit position)
+	
+	From 3-10 to 5-25, the program takes some short position. The amount is not large
+- For the 18.65% return
+	
+	The exit price is based on the cash flow, net position and take profit percentage. And the return is based on cash flow, net position, exit price and capital. The formula is as follow
+	
+	`exit price = abs(CF / net position) * (1 + take profit)`
+	
+	`return = 1000 * (CF - net position * exit price) / capital`
+	
+	`= abs(CF) * take profit * 1000 / capital = abs(CF) / 100,000`
+	
+	From the formula, if the CF is bigger and we actually take profit, the return will be higher. 
+	
+	On 2016-1-22, the CF is -18,651.0939 and we take profit, so the total return for the past long is `abs(CF) / 100,000 = 18.65%`
+	
