@@ -5,6 +5,7 @@
 - long at dmat_low, dmat_low - $1, ...
 - short at dmat_high, dmat_high + $1, ...
 - amount of contract for short and long are 1, 1, 2, 4, 8, 16, 32, 64, ...
+- unit of contract I have tested is *1* and *10*
 - take profit at 3% for long and short (base on the average price)
 - once exit, reset the corresponding position to 0 and set dmat value of that day as new entry price
 - net position limit is 600
@@ -34,15 +35,15 @@
 	For unit10, the total return in long position is around 20.30%, and in short is 9.2% 
 - For the 18.65% return in long position
 	
-	The exit price is based on the cash flow, net position and take profit percentage. And the return is based on cash flow, net position, exit price and capital. The formula is as follow
+	The exit price is based on the total cost, net position and take profit percentage. And the return is based on total cost, net position, exit price and capital. The formula is as follow
 	
-	`exit price = abs(CF / net position) * (1 + take profit)`
+	`exit price = abs(cost / net position) * (1 + take profit)`
 	
-	`return = 1000 * (CF - net position * exit price) / capital`
+	`return = 1000 * (cost - net position * exit price) / capital`
 	
-	`= abs(CF) * take profit * 1000 / capital = abs(CF) / 100,000`
+	`= abs(cost) * take profit * 1000 / capital = abs(cost) / 100,000`
 	
-	From the formula, if the CF is bigger and we actually take profit, the return will be higher. 
+	From the formula, if the cost is bigger and we actually take profit, the return will be higher. 
 	
-	On 2016-1-22, the CF is -18,651.0939 and we take profit, so the total return for the past long is `abs(CF) / 100,000 = 18.65%`
+	On 2016-1-22, the cost is -18,651.0939 and we take profit, so the total return for the past long is `abs(cost) / 100,000 = 18.65%`
 	
