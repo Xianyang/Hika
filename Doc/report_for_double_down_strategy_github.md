@@ -1,5 +1,4 @@
 ## Report for Double Down Strategy
----
 ###stragegy
 - start date: 1/1/2016
 - end date: 31/5/2016
@@ -25,10 +24,15 @@
 ###analysis
 - Position
 	
-	From 1-5 to 1-22, the price keep going down, so the program keeps taking long position. The program takes a total 512 position for unit 1 and 600 position for unit10 (hit the limit position)
+	From 5/1 to 22/1, the price keeps going down, so the program keeps taking long position. The program takes a total 512 position for unit 1 and 600 position for unit10 (hits the limit position)
+
+	From 10/3 to 25/5, the program takes some short position. The amount is not large
+- Return
+
+	For unit1, the total return in long position is around 14.35%, and in short is 0.92%
 	
-	From 3-10 to 5-25, the program takes some short position. The amount is not large
-- For the 18.65% return
+	For unit10, the total return in long position is around 20.30%, and in short is 9.2% 
+- For the 18.65% return in long position
 	
 	The exit price is based on the cash flow, net position and take profit percentage. And the return is based on cash flow, net position, exit price and capital. The formula is as follow
 	
