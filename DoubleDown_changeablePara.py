@@ -24,7 +24,7 @@ HOST = "localhost"
 PORT = 8194
 
 amount = {0:1, 1:1, 2:2, 3:4, 4:8}
-unit = 10
+unit = 100
 roundForLongAndShort = 4
 percentForALevel = 0.03
 
@@ -97,7 +97,6 @@ class Strategy(threading.Thread):
         shortpnl, longpnl, shortreturn, longreturn = 0.0, 0.0, 0.0, 0.0
 
         # this is a list save five levels from the high matsuba and low matsuba
-        target_high, target_low = [], []
         target_high = self.resetTargetList(mat_high, 'High')
         target_low = self.resetTargetList(mat_low, 'Low')
 
@@ -169,7 +168,7 @@ class Strategy(threading.Thread):
                         shortCF += 0 - price * size  # shortCF > 0
                         shortInfo[-1][-3] += size
                         shortTrade.append([dt, price, size])
-                        print 'short exercise at %f for %f position' % (price, size)
+                        print 'short exercise at $%f for %d position on ' % (price, size) + dt.strftime('%Y-%m-%d %H:%M')
 
                     short_takePorfit_price = abs(shortCF / self.shortPos) * (1 - self.stoploss)
                     short_exe = []
@@ -203,7 +202,7 @@ class Strategy(threading.Thread):
                         longCF += 0 - price * size  # longCF > 0
                         longInfo[-1][-3] += size
                         longTrade.append([dt, price, size])
-                        print 'long exercise at %f for %f position' % (price, size)
+                        print 'long exercise at $%f for %d position on ' % (price, size) + dt.strftime('%Y-%m-%d %H:%M')
 
                     long_takePorfit_price = abs(longCF / self.longPos) * (1 + self.stoploss)
                     long_exe = []
@@ -214,10 +213,10 @@ class Strategy(threading.Thread):
                 if lowPriceForDt <= short_takePorfit_price or shortStopLoss is True:
                     if lowPriceForDt <= short_takePorfit_price:
                         exitPrice = short_takePorfit_price
-                        print 'short exit and take profit at %f' % (exitPrice)
+                        print 'short exit and take profit at $%f on ' % (exitPrice) + dt.strftime('%Y-%m-%d %H:%M')
                     elif shortStopLoss is True:
                         exitPrice = lowPriceForDt
-                        print 'short exit and stop loss at %f' % (exitPrice)
+                        print 'short exit and stop loss at $%f on ' % (exitPrice) + dt.strftime('%Y-%m-%d %H:%M')
 
                     exitorder = 0 - self.shortPos
                     self.shortPos = 0
@@ -246,10 +245,10 @@ class Strategy(threading.Thread):
                 if long_takePorfit_price <= highPriceForDt or longStopLoss is True:
                     if long_takePorfit_price <= highPriceForDt:
                         exitPrice = long_takePorfit_price
-                        print 'long exit and take profit at %f' % (exitPrice)
+                        print 'long exit and take profit at $%f on ' % (exitPrice) + dt.strftime('%Y-%m-%d %H:%M')
                     elif longStopLoss is True:
                         exitPrice = highPriceForDt
-                        print 'long exit and stop loss at %f' % (exitPrice)
+                        print 'long exit and stop loss at $%f on ' % (exitPrice) + dt.strftime('%Y-%m-%d %H:%M')
 
                     exitorder = 0 - self.longPos
                     self.longPos = 0
@@ -368,6 +367,5 @@ if __name__ == "__main__":
             t.join()
     else:
         print "no date starts."
-    print "Waiting for finish..."
     print ('This program take %s seconds to run' % (timeToCount.time() - programStartTime))
 
