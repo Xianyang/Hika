@@ -9,25 +9,11 @@ import threading
 import time as timeToCount
 
 # ----------------------Constants-----------------------
-# timezone
-GMT = timezone('GMT+0')
-timezoneList = {'HKE': timezone('Asia/Hong_Kong'), 'NYMEX': timezone('US/Eastern'), 'TSX': timezone('Canada/Eastern'),
-                'ASX': timezone('Australia/Sydney'), 'FWB': timezone('CET'), 'LSE': timezone('Europe/London'),
-                'NYSE': timezone('US/Eastern')}
-closingTime = {'HKE': time(16), 'NYMEX': time(17, 15), 'TSX': time(16), 'ASX': time(16), 'FWB': time(20),
-               'LSE': time(16, 30), 'NYSE': time(16)}
-
-# matFile = "./Nicole/CL1 COMDTY Matsuba/CL1 COMDTY_res2.csv"
 matFile = './Data/CL1 COMDTY_res2.csv'
-
-HOST = "localhost"
-PORT = 8194
-
 amount = {0:1, 1:1, 2:2, 3:4, 4:8}
 unit = 100
 roundForLongAndShort = 4
 percentForALevel = 0.03
-
 # -------------------end of constants--------------------
 
 
@@ -51,7 +37,6 @@ class Strategy(threading.Thread):
         self.matvalue = mat_value
         # self.marketFile = "./Nicole/MarketData/CL1_5min.csv"
         self.marketFile = "./Data/CL1 COMDTY_2016-01-01_2016-06-01_5Minutes.csv"
-        # self.resultPath = "./Output/" + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '_Unit' + str(unit) + '/'
         self.resultPath = './OutputCP/Unit' + str(unit) + '_' + startdate.strftime('%Y%m%d') + '_' + enddate.strftime('%Y%m%d') + '/'
 
     def prepareDirectory(self):  # prepare both database and backup folders
@@ -62,7 +47,6 @@ class Strategy(threading.Thread):
                 print self.resultPath + " directory could not be created!"
                 return False
         return True
-
 
     def resetTargetList(self, matValue, indicator):
         targetList = []
@@ -78,16 +62,16 @@ class Strategy(threading.Thread):
                     targetList.append([matValue, amount[i] * unit])
                 else:
                     targetList.append([targetList[-1][0] * (1 - percentForALevel), amount[i] * unit])
+        else:
+            raise ValueError('indicator is invalid')
         return targetList
-
 
     def readMarket(self):
         startDatetime = datetime.combine(self.startdate, time(18))
         endDatetime = datetime.combine(self.enddate, time(17, 15))
 
         # parameters
-        self.netPos = 0
-        self.shortPos, self.longPos = 0, 0
+        self.netPos, self.shortPos, self.longPos = 0, 0, 0
         shortCF, longCF = 0.0, 0.0
         shortInfo, shortTrade, shortPNL = [], [], []
         longInfo, longTrade, longPNL = [], [], []
