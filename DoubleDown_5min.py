@@ -61,25 +61,10 @@ class Strategy(threading.Thread):
         return True
 
     def readMarket(self):
-        csvfile = pd.read_csv(self.marketFile)
-
-        # these dics save high and low data--{dt:high data}
-        highDict, lowDict = {}, {}
-
-        # this list saves all the datetime value from start date to end date
-        datetimeList = []
         startDatetime = datetime.combine(self.startdate, time(18))
         endDatetime = datetime.combine(self.enddate, time(17, 15))
-        for i in csvfile.index:
-            dt = datetime.strptime(csvfile.loc[i, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
-            if startDatetime <= dt <= endDatetime:
-                datetimeList.append(dt)
-                highDict[dt] = csvfile.loc[i, 'HIGH']
-                lowDict[dt] = csvfile.loc[i, 'LOW']
-            if dt > datetime.combine(self.enddate, time(17, 15)):
-                break
 
-        print ('%s seconds to read market file' % (timeToCount.time() - programStartTime))
+        # some parameters
         self.netPos = 0
         self.shortPos = 0
         shortInfo, shortTrade, shortPNL = [], [], []
@@ -89,207 +74,208 @@ class Strategy(threading.Thread):
         longCF = 0.0
         totalResult = []
         [mat_high, mat_low] = self.matvalue[self.startdate]
-        target_high, target_low = [], []
+        short_exe, long_exe = [], []
+        shortpnl, longpnl, shortreturn, longreturn = 0.0, 0.0, 0.0, 0.0
 
         # this is a list save five levels from the high matsuba and low matsuba
-        for i in range(5):
-            # target_high.append([mat_high + i, 0 - (i * 10 + 10)])
-            # target_low.append([mat_low - i, i * 10 + 10])
+        target_high = []
+        target_low = []
+        for i in xrange(5):
             target_high.append([mat_high + i, -amount[i] * unit])
             target_low.append([mat_low - i, amount[i] * unit])
 
-        shortpnl, longpnl, shortreturn, longreturn = 0.0, 0.0, 0.0, 0.0
+        csvfile = pd.read_csv(self.marketFile)
+        for index in csvfile.index:
+            dt = datetime.strptime(csvfile.loc[index, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
+            if dt < startDatetime:
+                continue
+            elif dt > endDatetime:
+                break
+            elif startDatetime <= dt <= endDatetime:
+                highPriceForDt = csvfile.loc[index, 'HIGH']
+                lowPriceForDt = csvfile.loc[index, 'LOW']
 
-        short_exe, long_exe = [], []
-        for dt in datetimeList:
-            # calculate the exit price for short and long
-            if self.shortPos != 0:
-                short_exitprice = abs(shortCF / self.shortPos) * (1 - self.stoploss)
-            else:
-                short_exitprice = 0
-            if self.longPos != 0:
-                long_exitprice = abs(longCF / self.longPos) * (1 + self.stoploss)
-            else:
-                long_exitprice = 9999
-
-            # it means that mat_high and mat_low does not exist at this day
-            if mat_high == 9999:
-                if dt.time() >= time(18):
-                    opent = dt.date()
+                # calculate the exit price for short and long
+                if self.shortPos != 0:
+                    short_exitprice = abs(shortCF / self.shortPos) * (1 - self.stoploss)
                 else:
-                    opent = (dt - timedelta(1)).date()
-                if opent in self.matdate:
-                    mat_high = self.matvalue[opent][0]
-                    # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
-                    target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
-
-            if mat_low == 0:
-                if dt.time() >= time(18):
-                    opent = dt.date()
+                    short_exitprice = 0
+                if self.longPos != 0:
+                    long_exitprice = abs(longCF / self.longPos) * (1 + self.stoploss)
                 else:
-                    opent = (dt - timedelta(1)).date()
-                if opent in self.matdate:
-                    mat_low = self.matvalue[opent][1]
-                    # target_low = [[mat_low - i, (i * 10 + 10)] for i in range(5)]
-                    target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
+                    long_exitprice = 9999
 
-            # short bias, using target_high
-            highPriceForDt = highDict[dt]
-            lowPriceForDt = lowDict[dt]
-            # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
-            shortInfo.append(
-                [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, self.shortPos, short_exitprice])
-            # if the candle covers the target, then add the target to short exercise
-            for price, size in target_high:
-                if lowPriceForDt <= price <= highPriceForDt:
-                    short_exe.append([price, size])  # price > 0, size < 0
-            if len(short_exe) != 0:
-                for price, size in short_exe:
-                    if abs(self.netPos + size) <= self.poslimit:
-                        self.shortPos += size
-                        self.netPos += size
-                        shortCF += 0 - price * size  # shortCF > 0
-                        shortInfo[-1][8] += size
-                        shortTrade.append([dt, price, size])
-                        while target_high.index([price, size]) != 0:
-                            del target_high[0]
-                            # target_high.append([target_high[-1][0] + 1, target_high[-1][1] - 10])
-                            target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
-                        target_high.remove([price, size])
-                        target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
+                # it means that mat_high and mat_low does not exist at this day
+                if mat_high == 9999:
+                    if dt.time() >= time(18):
+                        opent = dt.date()
                     else:
-                        newsize = self.poslimit - self.netPos
-                        if newsize > 0.0:
-                            self.shortPos += newsize
-                            self.netPos += newsize
-                            shortCF += 0 - price * newsize  # shortCF > 0
-                            shortInfo[-1][8] += newsize
-                            shortTrade.append([dt, price, newsize])
-                            target_high[target_high.index([price, size])][1] = size - newsize
-                        break
-                short_exitprice = abs(shortCF / self.shortPos) * (1 - self.stoploss)
-                short_exe = []
-                shortInfo[-1][9] = self.shortPos
-                shortInfo[-1][10] = short_exitprice
+                        opent = (dt - timedelta(1)).date()
+                    if opent in self.matdate:
+                        mat_high = self.matvalue[opent][0]
+                        # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
+                        target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
 
-            # long bias, using target_low
-            longInfo.append(
-                [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, self.longPos, long_exitprice])
-            for price, size in target_low:
-                if lowPriceForDt <= price <= highPriceForDt:
-                    long_exe.append([price, size])  # price > 0, size > 0
-            if len(long_exe) != 0:
-                for price, size in long_exe:
-                    if abs(self.netPos + size) <= self.poslimit:
-                        self.longPos += size
-                        self.netPos += size
-                        longCF += 0 - price * size
-                        longInfo[-1][8] += size
-                        longTrade.append([dt, price, size])
-                        while target_low.index([price, size]) != 0:
-                            del target_low[0]
-                            # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
-                            target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
-                        target_low.remove([price, size])
-                        # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
-                        target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
+                if mat_low == 0:
+                    if dt.time() >= time(18):
+                        opent = dt.date()
                     else:
-                        newsize = self.poslimit - self.netPos
-                        if newsize > 0.0:
-                            self.longPos += newsize
-                            self.netPos += newsize
-                            longCF += 0 - price * newsize
-                            longInfo[-1][8] += newsize
-                            longTrade.append([dt, price, newsize])
-                            target_low[target_low.index([price, size])][1] = size - newsize
-                        break
-                long_exitprice = abs(longCF / self.longPos) * (1 + self.stoploss)
-                long_exe = []
-                longInfo[-1][9] = self.longPos
-                longInfo[-1][10] = long_exitprice
+                        opent = (dt - timedelta(1)).date()
+                    if opent in self.matdate:
+                        mat_low = self.matvalue[opent][1]
+                        # target_low = [[mat_low - i, (i * 10 + 10)] for i in range(5)]
+                        target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
 
-            # short exit
-            if lowPriceForDt <= short_exitprice:
-                exitorder = 0 - self.shortPos
-                self.shortPos = 0
-                self.netPos += exitorder
-                shortpnl += shortCF - exitorder * short_exitprice
-                shortreturn += 1000 * shortpnl / self.capital
-                shortPNL.append([dt, shortCF, exitorder, short_exitprice, shortreturn])
+                # short bias, using target_high
+                # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
                 shortInfo.append(
-                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [exitorder, self.shortPos, short_exitprice])
-                shortTrade.append([dt, short_exitprice, exitorder])
-                shortCF = 0.0
-                if dt.time() >= time(18):
-                    opent = dt.date()
-                else:
-                    opent = (dt - timedelta(1)).date()
-                if opent in self.matdate:
-                    mat_high = self.matvalue[opent][0]
-                    # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
-                    target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
-                    for item in target_high:
-                        if item[0] <= highPriceForDt:
-                            target_high.remove(item)
-                            # target_high.append([target_high[-1][0] + 1, target_high[-1][1] - 10])
+                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, self.shortPos, short_exitprice])
+                # if the candle covers the target, then add the target to short exercise
+                for price, size in target_high:
+                    if lowPriceForDt <= price <= highPriceForDt:
+                        short_exe.append([price, size])  # price > 0, size < 0
+                if len(short_exe) != 0:
+                    for price, size in short_exe:
+                        if abs(self.netPos + size) <= self.poslimit:
+                            self.shortPos += size
+                            self.netPos += size
+                            shortCF += 0 - price * size  # shortCF > 0
+                            shortInfo[-1][8] += size
+                            shortTrade.append([dt, price, size])
+                            while target_high.index([price, size]) != 0:
+                                del target_high[0]
+                                # target_high.append([target_high[-1][0] + 1, target_high[-1][1] - 10])
+                                target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
+                            target_high.remove([price, size])
                             target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
                         else:
+                            newsize = self.poslimit - self.netPos
+                            if newsize > 0.0:
+                                self.shortPos += newsize
+                                self.netPos += newsize
+                                shortCF += 0 - price * newsize  # shortCF > 0
+                                shortInfo[-1][8] += newsize
+                                shortTrade.append([dt, price, newsize])
+                                target_high[target_high.index([price, size])][1] = size - newsize
                             break
-                else:
-                    mat_high = 9999
-                    target_high = [[9999, 0] for i in range(5)]
+                    short_exitprice = abs(shortCF / self.shortPos) * (1 - self.stoploss)
+                    short_exe = []
+                    shortInfo[-1][9] = self.shortPos
+                    shortInfo[-1][10] = short_exitprice
 
-            # long exit
-            if highPriceForDt >= long_exitprice:
-                exitorder = 0 - self.longPos
-                self.longPos = 0
-                self.netPos += exitorder
-                longpnl += longCF - exitorder * long_exitprice
-                longreturn += 1000 * longpnl / self.capital
-                longPNL.append([dt, longCF, exitorder, long_exitprice, longreturn])
-                longInfo.append([dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [exitorder, self.longPos,
-                                                                                                long_exitprice])
-                longTrade.append([dt, long_exitprice, exitorder])
-                longCF = 0.0
-                if dt.time() >= time(18):
-                    opent = dt.date()
-                else:
-                    opent = (dt - timedelta(1)).date()
-                if opent in self.matdate:
-                    mat_low = self.matvalue[opent][1]
-                    # target_low = [[mat_low - i, i * 10 + 10] for i in range(5)]
-                    target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
-                    for item in target_low:
-                        if item[0] >= lowPriceForDt:
-                            target_low.remove(item)
+                # long bias, using target_low
+                longInfo.append(
+                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, self.longPos, long_exitprice])
+                for price, size in target_low:
+                    if lowPriceForDt <= price <= highPriceForDt:
+                        long_exe.append([price, size])  # price > 0, size > 0
+                if len(long_exe) != 0:
+                    for price, size in long_exe:
+                        if abs(self.netPos + size) <= self.poslimit:
+                            self.longPos += size
+                            self.netPos += size
+                            longCF += 0 - price * size
+                            longInfo[-1][8] += size
+                            longTrade.append([dt, price, size])
+                            while target_low.index([price, size]) != 0:
+                                del target_low[0]
+                                # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
+                                target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
+                            target_low.remove([price, size])
                             # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
                             target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
                         else:
+                            newsize = self.poslimit - self.netPos
+                            if newsize > 0.0:
+                                self.longPos += newsize
+                                self.netPos += newsize
+                                longCF += 0 - price * newsize
+                                longInfo[-1][8] += newsize
+                                longTrade.append([dt, price, newsize])
+                                target_low[target_low.index([price, size])][1] = size - newsize
                             break
+                    long_exitprice = abs(longCF / self.longPos) * (1 + self.stoploss)
+                    long_exe = []
+                    longInfo[-1][9] = self.longPos
+                    longInfo[-1][10] = long_exitprice
+
+                # short exit
+                if lowPriceForDt <= short_exitprice:
+                    exitorder = 0 - self.shortPos
+                    self.shortPos = 0
+                    self.netPos += exitorder
+                    shortpnl += shortCF - exitorder * short_exitprice
+                    shortreturn += 1000 * shortpnl / self.capital
+                    shortPNL.append([dt, shortCF, exitorder, short_exitprice, shortreturn])
+                    shortInfo.append(
+                        [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [exitorder, self.shortPos, short_exitprice])
+                    shortTrade.append([dt, short_exitprice, exitorder])
+                    shortCF = 0.0
+                    if dt.time() >= time(18):
+                        opent = dt.date()
+                    else:
+                        opent = (dt - timedelta(1)).date()
+                    if opent in self.matdate:
+                        mat_high = self.matvalue[opent][0]
+                        # target_high = [[mat_high + i, 0 - (i * 10 + 10)] for i in range(5)]
+                        target_high = [[mat_high + i, -amount[i] * unit] for i in range(5)]
+                        for item in target_high:
+                            if item[0] <= highPriceForDt:
+                                target_high.remove(item)
+                                # target_high.append([target_high[-1][0] + 1, target_high[-1][1] - 10])
+                                target_high.append([target_high[-1][0] + 1, target_high[-1][1] * 2])
+                            else:
+                                break
+                    else:
+                        mat_high = 9999
+                        target_high = [[9999, 0] for i in range(5)]
+
+                # long exit
+                if highPriceForDt >= long_exitprice:
+                    exitorder = 0 - self.longPos
+                    self.longPos = 0
+                    self.netPos += exitorder
+                    longpnl += longCF - exitorder * long_exitprice
+                    longreturn += 1000 * longpnl / self.capital
+                    longPNL.append([dt, longCF, exitorder, long_exitprice, longreturn])
+                    longInfo.append([dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [exitorder, self.longPos,
+                                                                                                    long_exitprice])
+                    longTrade.append([dt, long_exitprice, exitorder])
+                    longCF = 0.0
+                    if dt.time() >= time(18):
+                        opent = dt.date()
+                    else:
+                        opent = (dt - timedelta(1)).date()
+                    if opent in self.matdate:
+                        mat_low = self.matvalue[opent][1]
+                        # target_low = [[mat_low - i, i * 10 + 10] for i in range(5)]
+                        target_low = [[mat_low - i, amount[i] * unit] for i in range(5)]
+                        for item in target_low:
+                            if item[0] >= lowPriceForDt:
+                                target_low.remove(item)
+                                # target_low.append([target_low[-1][0] - 1, target_low[-1][1] + 10])
+                                target_low.append([target_low[-1][0] - 1, target_low[-1][1] * 2])
+                            else:
+                                break
+                    else:
+                        mat_low = 0
+                        target_low = [[0, 0] for i in range(5)]
+
+                # the last day
+                if index == csvfile.index.values[-1]:
+                # if datetimeList.index(dt) == len(datetimeList) - 1:
+                    shortPNL.append([dt, shortCF, self.shortPos, 0, 0])
+                    longPNL.append([dt, longCF, self.longPos, 0, 0])
                 else:
-                    mat_low = 0
-                    target_low = [[0, 0] for i in range(5)]
-
-            # the last day
-            if datetimeList.index(dt) == len(datetimeList) - 1:
-                shortPNL.append([dt, shortCF, self.shortPos, 0, 0])
-                longPNL.append([dt, longCF, self.longPos, 0, 0])
-            else:
-                if dt.time() < time(18) <= datetimeList[datetimeList.index(dt) + 1].time():
-                    totalResult.append(
-                        [dt, self.shortPos, self.longPos, self.netPos, shortpnl, longpnl, shortreturn, longreturn])
-                    shortpnl, longpnl, shortreturn, longreturn = 0, 0, 0, 0
-
-        count = 0
-        dt = self.startdate
-        while dt < self.enddate:
-            opent = datetime.combine(dt, time(18))
-            closet = datetime.combine(dt, time(17, 15)) + timedelta(1)
-            for item in datetimeList:
-                if opent <= item < closet:
-                    count += 1
-                    break
-            dt += timedelta(1)
+                    dtNext = datetime.strptime(csvfile.loc[index + 1, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
+                    if dtNext > endDatetime:
+                        shortPNL.append([dt, shortCF, self.shortPos, 0, 0])
+                        longPNL.append([dt, longCF, self.longPos, 0, 0])
+                        break
+                    if dt.time() < time(18) <= dtNext.time():
+                        totalResult.append(
+                            [dt, self.shortPos, self.longPos, self.netPos, shortpnl, longpnl, shortreturn, longreturn])
+                        shortpnl, longpnl, shortreturn, longreturn = 0, 0, 0, 0
 
         # 1
         shortInfofile = pd.DataFrame(shortInfo, columns=['Date', 'high price', 'low price', 'target high level1',
@@ -356,17 +342,10 @@ if __name__ == "__main__":
     programStartTime = timeToCount.time()
 
     print "dMatonly_5min.py running..."
-    print "start date: " + startdate.strftime('%Y_%m_%d') + " end data: " + enddate.strftime('%Y_%m_%d')
+    print "start date: " + startdate.strftime('%Y_%m_%d')
+    print "end data: " + enddate.strftime('%Y_%m_%d')
 
     threads = []
-    '''
-    for dt in mat_dateList:
-        if dt>=testing_start and dt<=testing_end:
-            task = Strategy(dt, mat_value[dt], poslimit)
-            threads.append(task)
-        if dt>testing_end:
-            break
-    '''
     task = Strategy(poslimit, capital, stoploss, startdate, enddate, mat_dateList, mat_value)
     threads.append(task)
 
