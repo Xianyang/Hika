@@ -11,7 +11,7 @@ import time as timeToCount
 # ----------------------Constants-----------------------
 matFile = './Data/CL1 COMDTY_res2.csv'
 amount = {0:1, 1:1, 2:2, 3:4, 4:8}
-unit = 100
+unit = 1
 roundForLongAndShort = 4
 percentForALevel = 0.03
 # -------------------end of constants--------------------
@@ -131,7 +131,7 @@ class Strategy(threading.Thread):
                     [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, self.shortPos, short_takePorfit_price])
                 # if the candle covers the target, then add the target to short exercise or exit
                 for index, [price, size] in enumerate(target_high):
-                    if lowPriceForDt <= price <= highPriceForDt:
+                    if price and lowPriceForDt <= price <= highPriceForDt:
                         # if the price hits the last level, then stop loss!
                         if index == len(target_high) - 1:
                             shortStopLoss = True
@@ -139,7 +139,7 @@ class Strategy(threading.Thread):
                         else:
                             short_exe.append([price, size])  # price > 0, size < 0
                             # after exercise, set the value of the level to last level
-                            target_high[index] = [9999, 0]
+                            target_high[index] = [None, 0]
 
                 # short exercise
                 if len(short_exe) != 0 and shortStopLoss is False:
@@ -165,7 +165,7 @@ class Strategy(threading.Thread):
                     [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, self.longPos, long_takePorfit_price])
                 # if the candle covers the target, then add the target to short exercise or exit
                 for index, [price, size] in enumerate(target_low):
-                    if lowPriceForDt <= price <= highPriceForDt:
+                    if price and lowPriceForDt <= price <= highPriceForDt:
                         # if the price hits the last level, then stop loss!
                         if index == len(target_low) - 1:
                             longStopLoss = True
@@ -173,7 +173,7 @@ class Strategy(threading.Thread):
                         else:
                             long_exe.append([price, size])  # price > 0, size > 0
                             # after exercise, set the value of the level to last level
-                            target_low[index] = [0, 0]
+                            target_low[index] = [None, 0]
 
                 # long exercise
                 if len(long_exe) != 0 and longStopLoss is False:
@@ -273,10 +273,20 @@ class Strategy(threading.Thread):
                         shortpnl, longpnl, shortreturn, longreturn = 0, 0, 0, 0
 
         # 1
-        shortInfofile = pd.DataFrame(shortInfo, columns=['Date', 'high price', 'low price', 'target high level1',
-                                                         'target high level2', 'target high level3',
-                                                         'target high level4', 'order size',
-                                                         'accumulated short position', 'short exit price'])
+        targetHighLevels, targetLowLevels = [], []
+        for i in range(roundForLongAndShort):
+            highLevel = 'target high level %d' % (i + 1)
+            lowLevel = 'target low level %d' % (i + 1)
+            targetHighLevels.append(highLevel)
+            targetLowLevels.append(lowLevel)
+
+        shortInfoFileTitle = ['Date', 'high price', 'low price'] + targetHighLevels + \
+                             ['order size', 'accumulated short position', 'short exit price']
+        longInfoFileTitle = ['Date', 'high price', 'low price'] + targetLowLevels + \
+                             ['order size', 'accumulated short position', 'short exit price']
+
+        # 1
+        shortInfofile = pd.DataFrame(shortInfo, columns=shortInfoFileTitle)
         shortInfofile.to_csv(self.resultPath + "5min_tradeinfo_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 2
@@ -288,10 +298,7 @@ class Strategy(threading.Thread):
         shortpnlfile.to_csv(self.resultPath + "5min_pnl_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 4
-        longInfofile = pd.DataFrame(longInfo, columns=['Date', 'high price', 'low price', 'target low level1',
-                                                       'target low level2', 'target low level3', 'target low level4',
-                                                       'order size', 'accumulated long position',
-                                                       'long exit price'])
+        longInfofile = pd.DataFrame(longInfo, columns=longInfoFileTitle)
         longInfofile.to_csv(self.resultPath + "5min_tradeinfo_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 5

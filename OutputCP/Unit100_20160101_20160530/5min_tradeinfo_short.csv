@@ -1,4 +1,4 @@
-Date,high price,low price,target high level1,target high level2,target high level3,target high level4,order size,accumulated short position,short exit price
+Date,high price,low price,target high level 1,target high level 2,target high level 3,target high level 4,order size,accumulated short position,short exit price
 2016-01-04 18:00:00,36.93,36.87,38.63570428,39.7947754084,40.9886186707,42.2182772308,0,0,0.0
 2016-01-04 18:05:00,36.9,36.87,38.63570428,39.7947754084,40.9886186707,42.2182772308,0,0,0.0
 2016-01-04 18:10:00,36.89,36.83,38.63570428,39.7947754084,40.9886186707,42.2182772308,0,0,0.0
