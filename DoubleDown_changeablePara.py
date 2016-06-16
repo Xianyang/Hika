@@ -358,8 +358,8 @@ def startStrategy():
     print "start date: " + startdate.strftime('%Y_%m_%d')
     print "end data: " + enddate.strftime('%Y_%m_%d')
 
-    # sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
-    sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+    sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
+    # sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
     unit = 10
     # these three parameters need to be changed
     # roundForLongAndShort = 4
@@ -371,10 +371,9 @@ def startStrategy():
         print 'create directory fail'
         return None
 
-    # strategy.run(unit, sequenceForPosition, 4, 0.03, 0.03)
+    #strategy.run(unit, sequenceForPosition, 4, 0.03, 0.03)
 
     percentForALevelList, roundForLongAndShortList, takeProfitList = [], [], []
-    # bestPercentForALevel, bestRoundForLongAndShort, bestTakeProfit = 0.0, 0, 0.0
 
     # ------set the bounds for parameters------
     lowerBoundForRound = 3
@@ -382,14 +381,15 @@ def startStrategy():
     levelStep = 0.005
     lowerBoundForLevel = 0.02
     upperBoundForLevel = 0.05
-    for i in range(int((upperBoundForLevel - lowerBoundForLevel) / levelStep) + 1):
-        percentForALevelList.append(lowerBoundForLevel + i * levelStep)
 
     takeProfitStep = 0.005
     lowerBoundFortakeProfit = 0.02
     upperBoundFortakeProfit = 0.05
 
     # ------create list for data------
+    for i in range(int((upperBoundForLevel - lowerBoundForLevel) / levelStep) + 1):
+        percentForALevelList.append(lowerBoundForLevel + i * levelStep)
+
     for i in range(int((upperBoundFortakeProfit - lowerBoundFortakeProfit) / takeProfitStep) + 1):
         takeProfitList.append(lowerBoundFortakeProfit + i * takeProfitStep)
 
@@ -403,6 +403,8 @@ def startStrategy():
     bold = workbook.add_format({'bold': True})
     percentAndRed = workbook.add_format({'font_color': 'red', 'num_format': '#.#0%'})
     percentAndGreen = workbook.add_format({'font_color': 'green', 'num_format': '#.#0%'})
+    percentRedBgYellow = workbook.add_format({'font_color': 'red', 'num_format': '#.#0%', 'bg_color': 'yellow'})
+    percentGreenBgYellow = workbook.add_format({'font_color': 'green', 'num_format': '#.#0%', 'bg_color': 'yellow'})
     formatForTitle = workbook.add_format({'diag_type': 2, 'text_wrap': True})
 
     # start the loop to test parameters
@@ -412,16 +414,17 @@ def startStrategy():
         worksheet = workbook.add_worksheet(worksheetName)
         bestReturn, worstReturn, rowBestReturn, colBestReturn, rowWorstReturn, colWorstReturn = float('-inf'), float('inf'), 0, 0, 0, 0
 
-        # set title
+        # set title for this worksheet
         worksheet.set_column(0, 0, 22)
         worksheet.set_row(0, 30)
         worksheet.write(0, 0, '                       position level\ntake profit', formatForTitle)
 
-        # write the third row to worksheet
+        # write the third row to worksheet(position level)
         for colIndex, value in enumerate(percentForALevelList):
             worksheet.write(0, colIndex + 1, value, percentAndBold)
 
         for rowIndex, tempTakeProfit in enumerate(takeProfitList):
+            # write the value of take profit
             worksheet.write(rowIndex + 1, 0, tempTakeProfit, percentAndBold)
             for colIndex, tempLevel in enumerate(percentForALevelList):
                 tempReturn = strategy.run(unit, sequenceForPosition, tempRoundForLongAndShort, tempTakeProfit, tempLevel)
@@ -437,11 +440,14 @@ def startStrategy():
                     rowWorstReturn = rowIndex + 1
                     colWorstReturn = colIndex + 1
 
-                worksheet.write(rowIndex + 1, colIndex + 1, tempReturn, percent)
+                if tempReturn < 0:
+                    worksheet.write(rowIndex + 1, colIndex + 1, tempReturn, percentAndRed)
+                elif tempReturn >= 0:
+                    worksheet.write(rowIndex + 1, colIndex + 1, tempReturn, percentAndGreen)
 
         # set font color for best and worst return
-        worksheet.write(rowBestReturn, colBestReturn, bestReturn, percentAndGreen)
-        worksheet.write(rowWorstReturn, colWorstReturn, worstReturn, percentAndRed)
+        worksheet.write(rowBestReturn, colBestReturn, bestReturn, percentGreenBgYellow)
+        worksheet.write(rowWorstReturn, colWorstReturn, worstReturn, percentRedBgYellow)
 
     workbook.close()
 
