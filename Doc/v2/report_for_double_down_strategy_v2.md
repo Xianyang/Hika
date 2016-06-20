@@ -16,12 +16,12 @@
 - The green ones are positive return and red ones are negative return. 
 - The green one with yellow background is the best return at this `round limit` and the red one with yellow background is the worst return at this `round limit`
 
-	![](./round_limit_4.PNG)
+	![](./return_round_limit_4.PNG)
 
 ###Analysis
 - Here are a table and a chart showing the average return, best return, worst return for each `round limit`
 
-	![](./round_limit_change.PNG)
+	![](./return_round_limit_change.PNG)
 
 	![](./return_of_different_round.PNG)
 	

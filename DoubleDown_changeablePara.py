@@ -473,11 +473,9 @@ def threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketD
     worksheet.set_column(0, 1, 25)
     worksheet.set_column(0, 2, 25)
     worksheet.set_column(0, 3, 25)
-    worksheet.write(0, 0, 'Start Date', bold)
-    worksheet.write(0, 1, 'End Date', bold)
-    worksheet.write(0, 2, 'Return(not exit at the end)', bold)
-    worksheet.write(0, 3, 'Return(exit at the end)', bold)
-    worksheet.write(0, 4, 'Delta', bold)
+    titles = ['Start Date', 'End Date', 'Return(not exit at the end)', 'Return(exit at the end)', 'Delta']
+    for i in range(len(titles)):
+        worksheet.write(0, i, titles[i], bold)
 
     for i in range(daysToTest):
         startdate = timedelta(days=i) + beginOfData
