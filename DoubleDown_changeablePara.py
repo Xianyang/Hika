@@ -9,10 +9,12 @@ import time as timeToCount
 
 
 class Strategy():
-    def __init__(self, poslimit, capital, startdate, enddate, mat_dateList, mat_value):
+    def __init__(self, poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath):
         # threading.Thread.__init__(self)
         self.poslimit = poslimit
         self.capital = capital
+
+        # use the start date and last date to get start date of last date of matsuba data
         for i in range(1, len(mat_dateList)):
             dt_last = mat_dateList[i - 1]
             dt = mat_dateList[i]
@@ -23,9 +25,9 @@ class Strategy():
                 self.enddate = dt_last
                 eindex = i
                 break
-        self.matdate = mat_dateList[sindex:eindex]
-        self.matvalue = mat_value
-        self.marketFile = "./Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes.csv"
+        self.matdateList = mat_dateList[sindex:eindex]
+        self.matvalueList = mat_value
+        self.marketFilePath = marketDataFilePath
         self.resultPath = ''
 
     def prepareDirectory(self, unit):  # prepare both database and backup folders
@@ -40,26 +42,124 @@ class Strategy():
                 return False
         return True
 
-    def resetTargetList(self, matValue, indicator, unit, sequenceForPosition, roundForLongAndShort, percentForALevel):
+    def resetTargetList(self, matValue, type, unit, sequenceForPosition, roundForLongAndShort, percentForALevel):
         targetList = []
-        if indicator == 'High':
+        if type == 'high':
             for i in xrange(roundForLongAndShort):
                 if i == 0:
                     targetList.append([matValue, -sequenceForPosition[i] * unit])
                 else:
                     targetList.append([targetList[-1][0] * (1 + percentForALevel), -sequenceForPosition[i] * unit])
-        elif indicator == 'Low':
+        elif type == 'low':
             for i in xrange(roundForLongAndShort):
                 if i == 0:
                     targetList.append([matValue, sequenceForPosition[i] * unit])
                 else:
                     targetList.append([targetList[-1][0] * (1 - percentForALevel), sequenceForPosition[i] * unit])
         else:
-            raise ValueError('indicator is invalid')
+            raise ValueError('type is invalid')
         return targetList
 
-    def run(self, unit, sequenceForPosition, roundForLongAndShort, takeProfit, percentForALevel):
+    def calculateTakeProfitPrice(self, cashflow, position, takeProfit, type):
+        if position == 0:
+            return None
+        if type == 'short':
+            return abs(cashflow / position) * (1 - takeProfit)
+        elif type == 'long':
+            return abs(cashflow / position) * (1 + takeProfit)
+        else:
+            raise ValueError('type is invalid')
 
+    def getOpenDateForADatetime(self, dt):
+        if time(18) <= dt.time():
+            return dt.date()
+        else:
+            return (dt - timedelta(1)).date()
+        
+    def resetMatValue(self, dt, type, unit, sequenceForPosition, roundForLongAndShort, percentForALevel, baseTarget=0):
+        openDate = self.getOpenDateForADatetime(dt)
+        if openDate in self.matdateList:
+            if type == 'high':
+                matValue = self.matvalueList[openDate][0]
+                targetList = self.resetTargetList(matValue, 'high', unit, sequenceForPosition, roundForLongAndShort, percentForALevel)
+                if baseTarget != 0:
+                    while targetList[0][0] <= baseTarget:
+                        targetList = self.resetTargetList(targetList[0][0] * (1 + percentForALevel), 'high', unit,
+                                                          sequenceForPosition, roundForLongAndShort, percentForALevel)
+            elif type == 'low':
+                matValue = self.matvalueList[openDate][1]
+                targetList = self.resetTargetList(matValue, 'low', unit, sequenceForPosition, roundForLongAndShort, percentForALevel)
+                if baseTarget != 0:
+                    while targetList[0][0] >= baseTarget:
+                        targetList = self.resetTargetList(targetList[0][0] * (1 - percentForALevel), 'low', unit,
+                                                          sequenceForPosition, roundForLongAndShort, percentForALevel)
+            else:
+                raise ValueError('type is invalid')
+
+            return matValue, targetList
+        else:
+            return None, [[None, 0] for i in range(roundForLongAndShort)]
+
+    def getExerciseList(self, highPrice, lowPrice, targetList):
+        exerciseList = []
+        stopLoss = False
+        # if the candle covers the target, the add teh target to execise list or exit
+        for index, [price, size] in enumerate(targetList):
+            if price and lowPrice <= price <= highPrice:
+                # if the price hits the last level, then stop loss
+                if index == len(targetList) - 1:
+                    stopLoss = True
+                    return [], stopLoss
+                else:
+                    exerciseList.append([price, size])
+                    targetList[index] = [None, 0]
+
+        return exerciseList, stopLoss
+
+    def exercise(self, dt, exerciseList, position, netPosition, cashFlow, infoList, tradeList, type):
+        for price, size in exerciseList:
+            # hit the limit position, set a new size
+            if abs(size + netPosition) > self.poslimit:
+                if type == 'short':
+                    size = -(self.poslimit - abs(netPosition))
+                elif type == 'long':
+                    size = self.poslimit - netPosition
+                else:
+                    raise ValueError('type is invalid')
+
+                if size == 0:
+                    continue
+                print type + ' exercise hits the position limit and the new size is %d' % size
+
+            position += size
+            netPosition += size
+            cashFlow += 0 - price * size
+            infoList[-1][-3] += size
+            tradeList.append([dt, price, size])
+            print type + ' exercise at $%.2f for %d position on ' % (price, size) + dt.strftime(
+                '%Y-%m-%d %H:%M')
+
+        return position, netPosition, cashFlow
+
+    def exitPosition(self, type, dt, exitPrice, position, netPos, accumulateReturn, cashflow, highPriceForDt,
+                  lowPriceForDt, targetList, pnlList, infoList, tradeList):
+        exitorder = 0 - position
+        position = 0
+        netPos += exitorder
+        pnl = cashflow - exitorder * exitPrice
+        exitReturn = 1000 * pnl / self.capital
+        accumulateReturn += exitReturn
+        pnlList.append([dt, cashflow, exitorder, exitPrice, exitReturn])
+        infoList.append(
+            [dt, highPriceForDt ,lowPriceForDt] + [i[0] for i in targetList] + [exitorder, position, exitPrice])
+        tradeList.append([dt, exitPrice, exitorder])
+        cashflow = 0.0
+        print type + ' exit at $%.2f, return is %.2f' % (exitPrice, exitReturn * 100) + '% on ' + dt.strftime(
+            '%Y-%m-%d %H:%M')
+        return position, netPos, pnl, exitReturn, accumulateReturn, cashflow
+
+    def run(self, unit, sequenceForPosition, roundForLongAndShort, takeProfit, percentForALevel, exitAtEnd):
+        # check if round limit is valid
         if len(sequenceForPosition) < roundForLongAndShort or roundForLongAndShort < 2:
             print 'invalid round %d' % roundForLongAndShort
             return -1
@@ -71,22 +171,22 @@ class Strategy():
 
         # parameters
         netPos, shortPos, longPos = 0, 0, 0
-        shortCF, longCF = 0.0, 0.0
+        shortCashFlow, longCashFlow = 0.0, 0.0
         shortInfo, shortTrade, shortPNL = [], [], []
         longInfo, longTrade, longPNL = [], [], []
         totalResult = []
-        [mat_high, mat_low] = self.matvalue[self.startdate]
-        short_exe, long_exe = [], []
+        [mat_high, mat_low] = self.matvalueList[self.startdate]
         shortpnl, longpnl, shortreturn, longreturn = None, None, None, None
         accumulateReturn = 0
+        accumulateReturnWithExit = 0
 
         # this is a list saving five levels from the high matsuba and low matsuba
-        target_high = self.resetTargetList(mat_high, 'High', unit, sequenceForPosition, roundForLongAndShort,
+        target_high = self.resetTargetList(mat_high, 'high', unit, sequenceForPosition, roundForLongAndShort,
                                            percentForALevel)
-        target_low = self.resetTargetList(mat_low, 'Low', unit, sequenceForPosition, roundForLongAndShort,
+        target_low = self.resetTargetList(mat_low, 'low', unit, sequenceForPosition, roundForLongAndShort,
                                           percentForALevel)
+        csvfile = pd.read_csv(self.marketFilePath)
 
-        csvfile = pd.read_csv(self.marketFile)
         for DataIndex in csvfile.index:
             dt = datetime.strptime(csvfile.loc[DataIndex, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
             if dt < startDatetime:
@@ -96,201 +196,102 @@ class Strategy():
             elif startDatetime <= dt <= endDatetime:
                 highPriceForDt = csvfile.loc[DataIndex, 'HIGH']
                 lowPriceForDt = csvfile.loc[DataIndex, 'LOW']
-                shortStopLoss, longStopLoss = False, False
 
                 # calculate the take profit price for short and long
-                if shortPos != 0:
-                    short_takePorfit_price = abs(shortCF / shortPos) * (1 - takeProfit)
-                else:
-                    short_takePorfit_price = None
-                if longPos != 0:
-                    long_takePorfit_price = abs(longCF / longPos) * (1 + takeProfit)
-                else:
-                    long_takePorfit_price = None
+                shortTakeProfitPrice = self.calculateTakeProfitPrice(shortCashFlow, shortPos, takeProfit, 'short')
+                longTakeProfitPrice = self.calculateTakeProfitPrice(longCashFlow, longPos, takeProfit, 'long')
 
                 # it means that mat_high and mat_low does not exist at this day
                 if mat_high is None:
-                    if dt.time() >= time(18):
-                        opent = dt.date()
-                    else:
-                        opent = (dt - timedelta(1)).date()
-                    if opent in self.matdate:
-                        mat_high = self.matvalue[opent][0]
-                        target_high = self.resetTargetList(mat_high, 'High', unit, sequenceForPosition,
-                                                           roundForLongAndShort, percentForALevel)
+                    mat_high, target_high = self.resetMatValue(dt, 'high', unit, sequenceForPosition, roundForLongAndShort, percentForALevel)
 
                 if mat_low is None:
-                    if dt.time() >= time(18):
-                        opent = dt.date()
-                    else:
-                        opent = (dt - timedelta(1)).date()
-                    if opent in self.matdate:
-                        mat_low = self.matvalue[opent][1]
-                        target_low = self.resetTargetList(mat_low, 'Low', unit, sequenceForPosition,
-                                                          roundForLongAndShort, percentForALevel)
+                    mat_low, target_low = self.resetMatValue(dt, 'low', unit, sequenceForPosition, roundForLongAndShort, percentForALevel)
 
-                # short bias, using target_high
-                # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
+                # check if short exercise
                 shortInfo.append(
-                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, shortPos,
-                                                                                         short_takePorfit_price])
-                # if the candle covers the target, then add the target to short exercise or exit
-                for index, [price, size] in enumerate(target_high):
-                    if price and lowPriceForDt <= price <= highPriceForDt:
-                        # if the price hits the last level, then stop loss!
-                        if index == len(target_high) - 1:
-                            shortStopLoss = True
-                            break
-                        else:
-                            short_exe.append([price, size])  # price > 0, size < 0
-                            # after exercise, set the value of the level to None
-                            target_high[index] = [None, 0]
+                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [0, shortPos, shortTakeProfitPrice])
+                short_exe, shortStopLoss = self.getExerciseList(highPriceForDt, lowPriceForDt, target_high)
 
                 # short exercise
                 if len(short_exe) != 0 and shortStopLoss is False:
-                    for price, size in short_exe:
-                        # hit the limit position, set a new size
-                        if abs(netPos + size) > self.poslimit:
-                            size = -(self.poslimit - abs(netPos))
-                            if size == 0:
-                                continue
-                            print 'short exercise hits the position limit and the new size is %d' % size
-                        shortPos += size
-                        netPos += size
-                        shortCF += 0 - price * size  # shortCF > 0
-                        shortInfo[-1][-3] += size
-                        shortTrade.append([dt, price, size])
-                        print 'short exercise at $%.2f for %d position on ' % (price, size) + dt.strftime(
-                            '%Y-%m-%d %H:%M')
-
-                    short_takePorfit_price = abs(shortCF / shortPos) * (1 - takeProfit)
-                    short_exe = []
+                    shortPos, netPos, shortCashFlow = self.exercise(dt, short_exe, shortPos, netPos, shortCashFlow, shortInfo, shortTrade, 'short')
+                    shortTakeProfitPrice = self.calculateTakeProfitPrice(shortCashFlow, shortPos, takeProfit, 'short')
                     shortInfo[-1][-2] = shortPos
-                    shortInfo[-1][-1] = short_takePorfit_price
+                    shortInfo[-1][-1] = shortTakeProfitPrice
 
-                # long bias, using target_low
-                # the info dic is [dt, high_value, low_value, target1, target2, target3, target4, target5, size, position, exit_price]
+                # check if long exercise
                 longInfo.append(
-                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, longPos,
-                                                                                        long_takePorfit_price])
-                # if the candle covers the target, then add the target to short exercise or exit
-                for index, [price, size] in enumerate(target_low):
-                    if price and lowPriceForDt <= price <= highPriceForDt:
-                        # if the price hits the last level, then stop loss!
-                        if index == len(target_low) - 1:
-                            longStopLoss = True
-                            break
-                        else:
-                            long_exe.append([price, size])  # price > 0, size > 0
-                            # after exercise, set the value of the level to None
-                            target_low[index] = [None, 0]
+                    [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [0, longPos, longTakeProfitPrice])
+                long_exe, longStopLoss = self.getExerciseList(highPriceForDt, lowPriceForDt, target_low)
 
                 # long exercise
                 if len(long_exe) != 0 and longStopLoss is False:
-                    for price, size in long_exe:
-                        # hit the limit position, set a new size
-                        if abs(netPos + size) > self.poslimit:
-                            size = self.poslimit - netPos
-                            if size == 0:
-                                continue
-                            print 'long exercise hits the position limit and the new size is %d' % size
-                        longPos += size
-                        netPos += size
-                        longCF += 0 - price * size  # longCF > 0
-                        longInfo[-1][-3] += size
-                        longTrade.append([dt, price, size])
-                        print 'long exercise at $%.2f for %d position on ' % (price, size) + dt.strftime(
-                            '%Y-%m-%d %H:%M')
-
-                    long_takePorfit_price = abs(longCF / longPos) * (1 + takeProfit)
-                    long_exe = []
+                    longPos, netPos, longCashFlow = self.exercise(dt, long_exe, longPos, netPos, longCashFlow, longInfo, longTrade, 'long')
+                    longTakeProfitPrice = self.calculateTakeProfitPrice(longCashFlow, longPos, takeProfit, 'long')
                     longInfo[-1][-2] = longPos
-                    longInfo[-1][-1] = long_takePorfit_price
+                    longInfo[-1][-1] = longTakeProfitPrice
 
                 # short exit
-                if (short_takePorfit_price and lowPriceForDt <= short_takePorfit_price) or shortStopLoss is True:
-                    if lowPriceForDt <= short_takePorfit_price:
-                        exitPrice = short_takePorfit_price
+                if (shortTakeProfitPrice and lowPriceForDt <= shortTakeProfitPrice) or shortStopLoss is True:
+                    if lowPriceForDt <= shortTakeProfitPrice:
+                        exitPrice = shortTakeProfitPrice
                     elif shortStopLoss is True:
                         exitPrice = lowPriceForDt
 
-                    exitorder = 0 - shortPos
-                    shortPos = 0
-                    netPos += exitorder
-                    shortpnl = shortCF - exitorder * exitPrice
-                    shortreturn = 1000 * shortpnl / self.capital
-                    accumulateReturn += shortreturn
-                    shortPNL.append([dt, shortCF, exitorder, exitPrice, shortreturn])
-                    shortInfo.append(
-                        [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_high] + [exitorder, shortPos,
-                                                                                             exitPrice])
-                    shortTrade.append([dt, exitPrice, exitorder])
-                    shortCF = 0.0
-                    print 'short exit at $%.2f, return is %.2f' % (
-                    exitPrice, shortreturn * 100) + '% on ' + dt.strftime('%Y-%m-%d %H:%M')
-                    if dt.time() >= time(18):
-                        opent = dt.date()
-                    else:
-                        opent = (dt - timedelta(1)).date()
-                    if opent in self.matdate:
-                        mat_high = self.matvalue[opent][0]
-                        target_high = self.resetTargetList(mat_high, 'High', unit, sequenceForPosition,
-                                                           roundForLongAndShort, percentForALevel)
-                        while target_high[0][0] <= highPriceForDt:
-                            target_high = self.resetTargetList(target_high[0][0] * (1 + percentForALevel), 'High', unit,
-                                                               sequenceForPosition, roundForLongAndShort,
-                                                               percentForALevel)
-                    else:
-                        mat_high = None
-                        target_high = [[None, 0] for i in range(roundForLongAndShort)]
+                    shortPos, netPos, shortpnl, shortreturn, accumulateReturn, shortCashFlow = \
+                        self.exitPosition('short', dt, exitPrice, shortPos, netPos, accumulateReturn, shortCashFlow, highPriceForDt, lowPriceForDt, target_high,
+                                  shortPNL, shortInfo, shortTrade)
+                    mat_high, target_high = self.resetMatValue(dt, 'high', unit, sequenceForPosition,
+                                                               roundForLongAndShort, percentForALevel, highPriceForDt)
 
                 # long exit
-                if (long_takePorfit_price and long_takePorfit_price <= highPriceForDt) or longStopLoss is True:
-                    if long_takePorfit_price <= highPriceForDt:
-                        exitPrice = long_takePorfit_price
+                if (longTakeProfitPrice and longTakeProfitPrice <= highPriceForDt) or longStopLoss is True:
+                    if longTakeProfitPrice <= highPriceForDt:
+                        exitPrice = longTakeProfitPrice
                     elif longStopLoss is True:
                         exitPrice = highPriceForDt
-
-                    exitorder = 0 - longPos
-                    longPos = 0
-                    netPos += exitorder
-                    longpnl = longCF - exitorder * exitPrice
-                    longreturn = 1000 * longpnl / self.capital
-                    accumulateReturn += longreturn
-                    longPNL.append([dt, longCF, exitorder, exitPrice, longreturn])
-                    longInfo.append(
-                        [dt, highPriceForDt, lowPriceForDt] + [i[0] for i in target_low] + [exitorder, longPos,
-                                                                                            exitPrice])
-                    longTrade.append([dt, exitPrice, exitorder])
-                    longCF = 0.0
-                    print 'long exit at $%.2f, return is %.2f' % (exitPrice, longreturn * 100) + '% on ' + dt.strftime(
-                        '%Y-%m-%d %H:%M')
-                    if dt.time() >= time(18):
-                        opent = dt.date()
-                    else:
-                        opent = (dt - timedelta(1)).date()
-                    if opent in self.matdate:
-                        mat_low = self.matvalue[opent][1]
-                        target_low = self.resetTargetList(mat_low, 'Low', unit, sequenceForPosition,
-                                                          roundForLongAndShort, percentForALevel)
-                        while lowPriceForDt <= target_low[0][0]:
-                            target_low = self.resetTargetList(target_low[0][0] * (1 - percentForALevel), 'Low', unit,
-                                                              sequenceForPosition, roundForLongAndShort,
-                                                              percentForALevel)
-                    else:
-                        mat_low = None
-                        target_low = [[None, 0] for i in range(roundForLongAndShort)]
+                    longPos, netPos, longpnl, longreturn, accumulateReturn, longCashFlow = \
+                        self.exitPosition('long', dt, exitPrice, longPos, netPos, accumulateReturn, longCashFlow,
+                                          highPriceForDt, lowPriceForDt, target_low,
+                                          longPNL, longInfo, longTrade)
+                    mat_low, target_low = self.resetMatValue(dt, 'low', unit, sequenceForPosition,
+                                                               roundForLongAndShort, percentForALevel, lowPriceForDt)
 
                 # the last data
                 if DataIndex == csvfile.index.values[-1]:
-                    shortPNL.append([dt, shortCF, shortPos, 0, 0])
-                    longPNL.append([dt, longCF, longPos, 0, 0])
+                    shortPNL.append([dt, shortCashFlow, shortPos, 0, 0])
+                    longPNL.append([dt, longCashFlow, longPos, 0, 0])
                 else:
                     dtNext = datetime.strptime(csvfile.loc[DataIndex + 1, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
                     if endDatetime < dtNext:
-                        shortPNL.append([dt, shortCF, shortPos, 0, 0])
-                        longPNL.append([dt, longCF, longPos, 0, 0])
-                        print 'last date'
+                        # last data and exit
+                        if shortPos != 0:
+                            print 'short exit at the end'
+                            exitPrice = lowPriceForDt
+                            shortPos, netPos, shortpnl, shortreturn, accumulateReturnWithExit, shortCashFlow = \
+                                self.exitPosition('short', dt, exitPrice, shortPos, netPos, accumulateReturn,
+                                                  shortCashFlow, highPriceForDt, lowPriceForDt, target_high,
+                                                  shortPNL, shortInfo, shortTrade)
+                            totalResult.append(
+                                [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
+                                 accumulateReturnWithExit])
+
+                        if longPos != 0:
+                            print 'long exit at the end'
+                            exitPrice = highPriceForDt
+                            longPos, netPos, longpnl, longreturn, accumulateReturnWithExit, longCashFlow = \
+                                self.exitPosition('long', dt, exitPrice, longPos, netPos, accumulateReturn,
+                                                  longCashFlow,
+                                                  highPriceForDt, lowPriceForDt, target_low,
+                                                  longPNL, longInfo, longTrade)
+                            totalResult.append(
+                                [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
+                                 accumulateReturnWithExit])
+
+                        if accumulateReturnWithExit == 0:
+                            accumulateReturnWithExit = accumulateReturn
+
                         break
                     if dt.time() < time(18) <= dtNext.time():
                         totalResult.append(
@@ -355,7 +356,7 @@ class Strategy():
         print 'total return for long is %.2f' % (sumOfLongPNL * 100) + '%'
         '''
         print 'total return is %.2f' % (accumulateReturn * 100) + '%\n'
-        return accumulateReturn
+        return accumulateReturn, accumulateReturnWithExit
 
 
 def readMatsuba(filename):
@@ -368,65 +369,8 @@ def readMatsuba(filename):
     return mat_dateList, mat_value
 
 
-def startStrategy():
-    poslimit = 600
-    capital = 5000.0 * poslimit
-    matFile = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
-    mat_dateList, mat_value = readMatsuba(matFile)
-    startdate = datetime(2016, 1, 1).date()
-    enddate = datetime(2016, 5, 30).date()
-
-    sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
-    # sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
-    unit = 10
-    # these three parameters need to be changed
-    # roundForLongAndShort = 4
-    # percentForALevel = 0.03
-    # takeProfit = 0.03
-
-    # strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value)
-    # strategy.run(unit, sequenceForPosition, roundForLongAndShort=7, takeProfit=0.025, percentForALevel=0.02)
-
-    # set the date to test
-    beginOfData = datetime(2016, 1, 1).date()
-    endOfData = datetime(2016, 6, 17).date()
-
-    daysToTest = (endOfData - beginOfData).days - 31 * 3
-
-    if daysToTest <= 0:
-        return None
-
-    workbook = xlsxwriter.Workbook('return_for_different_start_date.xlsx')
-    bold = workbook.add_format({'bold': True})
-    percentAndRed = workbook.add_format({'font_color': 'red', 'num_format': '#.#0%'})
-    percentAndGreen = workbook.add_format({'font_color': 'green', 'num_format': '#.#0%'})
-    worksheet = workbook.add_worksheet('Sheet1')
-    worksheet.set_column(0, 0, 12)
-    worksheet.write(0, 0, 'Date', bold)
-    worksheet.write(0, 1, 'Return', bold)
-
-    for i in range(daysToTest):
-        startdate = timedelta(days=i) + beginOfData
-        enddate = timedelta(days=90) + startdate
-
-        print "start date: " + startdate.strftime('%Y_%m_%d')
-        print "end data: " + enddate.strftime('%Y_%m_%d')
-
-        strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value)
-        if not strategy.prepareDirectory(unit=unit):
-            print 'create directory fail'
-            return None
-
-        tempReturn = strategy.run(unit, sequenceForPosition, roundForLongAndShort=7, takeProfit=0.025, percentForALevel=0.02)
-        worksheet.write(i + 1, 0, startdate.strftime('%Y_%m_%d'))
-        if tempReturn < 0:
-            worksheet.write(i + 1, 1, tempReturn, percentAndRed)
-        elif 0 <= tempReturn:
-            worksheet.write(i + 1, 1, tempReturn, percentAndGreen)
-
-    workbook.close()
-
-    '''
+def findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition):
+    strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath)
     percentForALevelList, roundForLongAndShortList, takeProfitList = [], [], []
 
     # ------set the bounds for parameters------
@@ -466,7 +410,8 @@ def startStrategy():
         # add a worksheet for each round limit
         worksheetName = 'Round limit %d' % tempRoundForLongAndShort
         worksheet = workbook.add_worksheet(worksheetName)
-        bestReturn, worstReturn, rowBestReturn, colBestReturn, rowWorstReturn, colWorstReturn = float('-inf'), float('inf'), 0, 0, 0, 0
+        bestReturn, worstReturn, rowBestReturn, colBestReturn, rowWorstReturn, colWorstReturn = float('-inf'), float(
+            'inf'), 0, 0, 0, 0
 
         # set title for this worksheet
         worksheet.set_column(0, 0, 22)
@@ -481,7 +426,8 @@ def startStrategy():
             # write the value of take profit
             worksheet.write(rowIndex + 1, 0, tempTakeProfit, percentAndBold)
             for colIndex, tempLevel in enumerate(percentForALevelList):
-                tempReturn = strategy.run(unit, sequenceForPosition, tempRoundForLongAndShort, tempTakeProfit, tempLevel)
+                tempReturn = strategy.run(unit, sequenceForPosition, tempRoundForLongAndShort, tempTakeProfit,
+                                          tempLevel, exitAtEnd=True)
 
                 # check if best or worst
                 if bestReturn < tempReturn:
@@ -504,7 +450,96 @@ def startStrategy():
         worksheet.write(rowWorstReturn, colWorstReturn, worstReturn, percentRedBgYellow)
 
     workbook.close()
-    '''
+
+
+def threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition):
+    # set the date to test
+    beginOfData = datetime(2016, 1, 1).date()
+    endOfData = datetime(2016, 6, 17).date()
+    # endOfData = datetime(2016, 4, 4).date()
+
+    daysToTest = (endOfData - beginOfData).days - 30 * 3 - 1
+
+    if daysToTest <= 0:
+        return None
+
+    workbook = xlsxwriter.Workbook('return_for_different_start_date.xlsx')
+    bold = workbook.add_format({'bold': True})
+    percentAndRed = workbook.add_format({'font_color': 'red', 'num_format': '#.##0%'})
+    percentAndGreen = workbook.add_format({'font_color': 'green', 'num_format': '#.##0%'})
+    percentWithoutColor = workbook.add_format({'num_format': '#0.##0%'})
+    worksheet = workbook.add_worksheet('Sheet1')
+    worksheet.set_column(0, 0, 10)
+    worksheet.set_column(0, 1, 25)
+    worksheet.set_column(0, 2, 25)
+    worksheet.set_column(0, 3, 25)
+    worksheet.write(0, 0, 'Start Date', bold)
+    worksheet.write(0, 1, 'End Date', bold)
+    worksheet.write(0, 2, 'Return(not exit at the end)', bold)
+    worksheet.write(0, 3, 'Return(exit at the end)', bold)
+    worksheet.write(0, 4, 'Delta', bold)
+
+    for i in range(daysToTest):
+        startdate = timedelta(days=i) + beginOfData
+        enddate = timedelta(days=90) + startdate
+
+        print "start date: " + startdate.strftime('%Y-%m-%d')
+        print "end data: " + enddate.strftime('%Y-%m-%d')
+
+        strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath)
+        if not strategy.prepareDirectory(unit=unit):
+            print 'create directory fail'
+            return None
+
+        worksheet.write(i + 1, 0, startdate.strftime('%Y-%m-%d'))
+        worksheet.write(i + 1, 1, enddate.strftime('%Y-%m-%d'))
+
+        returnNotExit, returnExit = strategy.run(unit, sequenceForPosition, roundForLongAndShort=7, takeProfit=0.025,
+                                  percentForALevel=0.02, exitAtEnd=True)
+        if returnNotExit < 0:
+            worksheet.write(i + 1, 2, returnNotExit, percentAndRed)
+        elif 0 <= returnNotExit:
+            worksheet.write(i + 1, 2, returnNotExit, percentAndGreen)
+
+        if returnExit < 0:
+            worksheet.write(i + 1, 3, returnExit, percentAndRed)
+        elif 0 <= returnExit:
+            worksheet.write(i + 1, 3, returnExit, percentAndGreen)
+
+        delta = returnNotExit - returnExit
+        if delta < 0:
+            worksheet.write(i + 1, 4, delta, percentAndRed)
+        elif delta > 0:
+            worksheet.write(i + 1, 4, delta, percentAndGreen)
+        else:
+            worksheet.write(i + 1, 4, delta, percentWithoutColor)
+
+    workbook.close()
+
+
+def startStrategy():
+    poslimit = 600
+    capital = 5000.0 * poslimit
+    matFile = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
+    marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes.csv'
+    mat_dateList, mat_value = readMatsuba(matFile)
+    startdate = datetime(2016, 1, 1).date()
+    enddate = datetime(2016, 5, 30).date()
+
+    sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
+    # sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
+    unit = 10
+    # these three parameters need to be changed
+    # roundForLongAndShort = 4
+    # percentForALevel = 0.03
+    # takeProfit = 0.03
+
+    # strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath)
+    # strategy.run(unit, sequenceForPosition, roundForLongAndShort=4, takeProfit=0.03, percentForALevel=0.03, exitAtEnd=True)
+    # strategy.run(unit, sequenceForPosition, roundForLongAndShort=7, takeProfit=0.05, percentForALevel=0.05, exitAtEnd=True)
+
+    threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
+    # findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
 
 if __name__ == "__main__":
