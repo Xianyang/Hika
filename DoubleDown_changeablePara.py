@@ -145,7 +145,7 @@ class Strategy():
                     for price, size in short_exe:
                         # hit the limit position, set a new size
                         if abs(self.netPos + size) > self.poslimit:
-                            size = self.poslimit - self.netPos
+                            size = -(self.poslimit - abs(self.netPos))
                             if size == 0:
                                 continue
                             print 'short exercise hits the position limit and the new size is %d' % size
@@ -277,7 +277,7 @@ class Strategy():
                             [dt, self.shortPos, self.longPos, self.netPos, shortpnl, longpnl, shortreturn, longreturn, accumulateReturn])
                         shortpnl, longpnl, shortreturn, longreturn = None, None, None, None
 
-        '''
+
         # 1
         targetHighLevels, targetLowLevels = [], []
         for i in range(roundForLongAndShort):
@@ -332,7 +332,7 @@ class Strategy():
         # print some results
         print 'total return for short is %.2f' % (sumOfShortPNL * 100) + '%'
         print 'total return for long is %.2f' % (sumOfLongPNL * 100) + '%'
-        '''
+
         print 'total return is %.2f' % (accumulateReturn * 100) + '%\n'
         return accumulateReturn
 
@@ -371,12 +371,13 @@ def startStrategy():
         print 'create directory fail'
         return None
 
-    #strategy.run(unit, sequenceForPosition, 4, 0.03, 0.03)
-
+    # strategy.run(unit, sequenceForPosition, 4, 0.03, 0.03)
+    strategy.run(unit, sequenceForPosition, roundForLongAndShort=7, takeProfit=0.025, percentForALevel=0.025)
+    '''
     percentForALevelList, roundForLongAndShortList, takeProfitList = [], [], []
 
     # ------set the bounds for parameters------
-    lowerBoundForRound = 3
+    lowerBoundForRound = 4
 
     levelStep = 0.005
     lowerBoundForLevel = 0.02
@@ -450,7 +451,7 @@ def startStrategy():
         worksheet.write(rowWorstReturn, colWorstReturn, worstReturn, percentRedBgYellow)
 
     workbook.close()
-
+    '''
 
 if __name__ == "__main__":
     programStartTime = timeToCount.time()
