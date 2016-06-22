@@ -1,5 +1,8 @@
 import xlsxwriter
 
+a = 0.300
+print '%f %%' % (a * 100)
+
 workbook = xlsxwriter.Workbook('test.xlsx')
 worksheet = workbook.add_worksheet()
 
