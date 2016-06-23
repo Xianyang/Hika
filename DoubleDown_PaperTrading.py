@@ -42,7 +42,7 @@ def getMatValue(dt, matPath, type):
 
 def resetTargetList(matValue, type, roundLimit, positionLevel, sequenceForPosition, unit):
     if matValue is None:
-        return None, [[None, 0] for i in range(roundLimit)]
+        return [[None, 0] for i in range(roundLimit)]
     targetList = []
     for i in xrange(roundLimit):
         if type == 'high':
@@ -128,27 +128,33 @@ class Strategy():
         # openDate = getOpenDateForADatetime(self.dt)
         matHigh = getMatValue(dt, self.matPath, 'high')
         matLow = getMatValue(dt, self.matPath, 'low')
-        if matHigh and matLow:
-            if type == 'high':
+        if type == 'high':
+            if matHigh:
                 matValue = matHigh
                 targetList = self.resetTargetList(matValue, 'high')
                 if baseTarget != 0:
                     while targetList[0][0] <= baseTarget:
                         targetList = self.resetTargetList(targetList[0][0] * (1 + self.positionLevel), 'high')
-            elif type == 'low':
+                return matValue, targetList
+            else:
+                return None, [[None, 0] for i in range(self.roundLimit)]
+        elif type == 'low':
+            if matLow:
                 matValue = matLow
                 targetList = self.resetTargetList(matValue, 'low')
                 if baseTarget != 0:
                     while targetList[0][0] >= baseTarget:
                         targetList = self.resetTargetList(targetList[0][0] * (1 - self.positionLevel))
+                return matValue, targetList
             else:
-                raise ValueError('type is invalid')
-
-            return matValue, targetList
+                return None, [[None, 0] for i in range(self.roundLimit)]
         else:
             return None, [[None, 0] for i in range(self.roundLimit)]
 
     def getExerciseList(self, targetList):
+        if targetList[-1][0] is None:
+            return [], False
+
         exerciseList = []
         stopLoss = False
         # if the candle covers the target, the add teh target to execise list or exit
@@ -203,7 +209,7 @@ class Strategy():
 
     def run(self):
         # there is no mat value
-        if self.firstTargetHigh is None or self.firstTargetLow is None:
+        if self.firstTargetHigh is None and self.firstTargetLow is None:
             return False
 
         # calculate take profit price
@@ -263,7 +269,7 @@ def start(dt, highPriceForDt, lowPriceForDt):
         with open('CL1_Variables.pckl') as f:
             accumulateReturn, shortPos, longPos, shortCashFlow, longCashFlow, firstTargetHigh, firstTargetLow, targetHighList, targetLowList = pickle.load(f)
             # print 'short position is now at %d, long position is now at %d' % (shortPos, longPos)
-            # todo change this time to corresponding time zone
+            # todo change matsuba to current matsuba value
             if firstTargetHigh is None:
                 firstTargetHigh = getMatValue(dt, matFilePath, 'high')
                 targetHighList = resetTargetList(firstTargetHigh, 'high', roundLimit, positionLevel, sequenceForPosition, unit)
@@ -296,7 +302,7 @@ def start(dt, highPriceForDt, lowPriceForDt):
         accumulateReturn = 0.0
         shortPos, longPos = 0, 0
         shortCashFlow, longCashFlow = 0, 0
-        # todo change this time to corresponding time zone
+        # todo change matsuba to the start date
         firstTargetHigh = getMatValue(dt, matFilePath, 'high')
         firstTargetLow = getMatValue(dt, matFilePath, 'low')
         targetHighList = resetTargetList(firstTargetHigh, 'high', roundLimit, positionLevel, sequenceForPosition, unit)
@@ -327,7 +333,7 @@ if __name__ == '__main__':
 
     timeToTest = int((endDate - startDate).total_seconds() / timedelta(minutes=5).total_seconds())
 
-    marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes.csv'
+    marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
     csvfile = pd.read_csv(marketDataFilePath)
     dateList = []
     for DataIndex in csvfile.index:
