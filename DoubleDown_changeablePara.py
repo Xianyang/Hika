@@ -42,6 +42,14 @@ class Strategy():
                 return False
         return True
 
+    def dailyReturn(self, shortReturn, longReturn):
+        if shortReturn is None:
+            shortReturn = 0
+        if longReturn is None:
+            longReturn = 0
+
+        return shortReturn + longReturn
+
     def resetTargetList(self, matValue, type, unit, sequenceForPosition, roundLimit, percentForALevel):
         targetList = []
         for i in xrange(roundLimit):
@@ -169,6 +177,7 @@ class Strategy():
         shortInfo, shortTrade, shortPNL = [], [], []
         longInfo, longTrade, longPNL = [], [], []
         totalResult = []
+        resultForPnlPdf = []
         [mat_high, mat_low] = self.matvalueList[self.startdate]
         shortpnl, longpnl, shortreturn, longreturn = None, None, None, None
         accumulateReturn = 0
@@ -190,6 +199,7 @@ class Strategy():
             elif startDatetime <= dt <= endDatetime:
                 highPriceForDt = csvfile.loc[DataIndex, 'HIGH']
                 lowPriceForDt = csvfile.loc[DataIndex, 'LOW']
+                closePriceForDt = csvfile.loc[DataIndex, 'CLOSE']
 
                 # calculate the take profit price for short and long
                 shortTakeProfitPrice = self.calculateTakeProfitPrice(shortCashFlow, shortPos, takeProfit, 'short')
@@ -270,6 +280,7 @@ class Strategy():
                             totalResult.append(
                                 [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
                                  accumulateReturnWithExit])
+                            resultForPnlPdf.append([dt.strftime('%Y-%m-%d'), closePriceForDt, self.dailyReturn(shortreturn, longreturn)])
 
                         if longPos != 0:
                             print 'long exit at the end'
@@ -282,6 +293,7 @@ class Strategy():
                             totalResult.append(
                                 [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
                                  accumulateReturnWithExit])
+                            resultForPnlPdf.append([dt.strftime('%Y-%m-%d'), closePriceForDt, self.dailyReturn(shortreturn, longreturn)])
 
                         if accumulateReturnWithExit == 0:
                             accumulateReturnWithExit = accumulateReturn
@@ -291,6 +303,7 @@ class Strategy():
                         totalResult.append(
                             [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
                              accumulateReturn])
+                        resultForPnlPdf.append([dt.strftime('%Y-%m-%d'), closePriceForDt, self.dailyReturn(shortreturn, longreturn)])
                         shortpnl, longpnl, shortreturn, longreturn = None, None, None, None
 
         '''
@@ -344,6 +357,10 @@ class Strategy():
                                 columns=['date', 'short position', 'long position', 'net position', 'short pnl',
                                          'long pnl', 'short return', 'long return', 'accumulate return'])
         totalpnl.to_csv(self.resultPath + "5min_totalreturn.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+        # 8
+        pnlToPdf = pd.DataFrame(resultForPnlPdf, columns=['date', 'px', 'Pnl'])
+        pnlToPdf.to_csv(self.resultPath + "pnlToPdf.csv", date_format="%Y-%m-%d", index=False)
 
         # print some results
         print 'total return for short is %.2f' % (sumOfShortPNL * 100) + '%'
@@ -521,8 +538,8 @@ def startStrategy():
     matFile = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
     marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes.csv'
     mat_dateList, mat_value = readMatsuba(matFile)
-    startdate = datetime(2016, 1, 21).date()
-    enddate = datetime(2016, 4, 20).date()
+    startdate = datetime(2016, 1, 1).date()
+    enddate = datetime(2016, 6, 16).date()
 
     sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
     # sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32}
@@ -532,14 +549,18 @@ def startStrategy():
     # percentForALevel = 0.03
     # takeProfit = 0.03
 
+    '''
     strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath)
+    if not strategy.prepareDirectory(unit=unit):
+        print 'create directory fail'
+        return None'''
     # strategy.run(unit, sequenceForPosition, roundLimit=4, takeProfit=0.03, percentForALevel=0.03, exitAtEnd=True)
     # strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
 
-    '''threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-                   roundLimit=7, takeProfit=0.02, positionLevel=0.02)'''
     threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-                       roundLimit=6, takeProfit=0.025, positionLevel=0.025)
+                   roundLimit=7, takeProfit=0.025, positionLevel=0.02)
+    '''threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
+                   roundLimit=6, takeProfit=0.025, positionLevel=0.025)'''
     # findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
 
