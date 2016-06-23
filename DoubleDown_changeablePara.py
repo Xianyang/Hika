@@ -535,9 +535,9 @@ def threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketD
 def startStrategy():
     poslimit = 600
     capital = 5000.0 * poslimit
-    matFile = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
+    matFilePath = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
     marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes.csv'
-    mat_dateList, mat_value = readMatsuba(matFile)
+    mat_dateList, mat_value = readMatsuba(matFilePath)
     startdate = datetime(2016, 1, 1).date()
     enddate = datetime(2016, 6, 16).date()
 
@@ -549,18 +549,18 @@ def startStrategy():
     # percentForALevel = 0.03
     # takeProfit = 0.03
 
-    '''
+
     strategy = Strategy(poslimit, capital, startdate, enddate, mat_dateList, mat_value, marketDataFilePath)
     if not strategy.prepareDirectory(unit=unit):
         print 'create directory fail'
-        return None'''
+        return None
     # strategy.run(unit, sequenceForPosition, roundLimit=4, takeProfit=0.03, percentForALevel=0.03, exitAtEnd=True)
-    # strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
+    strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
 
-    threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-                   roundLimit=7, takeProfit=0.025, positionLevel=0.02)
     '''threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-                   roundLimit=6, takeProfit=0.025, positionLevel=0.025)'''
+               roundLimit=7, takeProfit=0.025, positionLevel=0.02)
+    threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
+               roundLimit=6, takeProfit=0.025, positionLevel=0.025)'''
     # findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
 
