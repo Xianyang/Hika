@@ -17,3 +17,9 @@
 ###Result
 - Table
 	![](./return_table.PNG)
+
+- Chart
+	
+	this is the chart for double down strategy starting from Jan.1 to Mar.17 with time interval 3 months. The round limit is 7, take profit at 2.5% and position level is 2.0%
+	
+	![](./return_of_three_months.PNG)
