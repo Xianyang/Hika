@@ -1,5 +1,4 @@
 import pandas as pd
-from scipy.optimize import minimize
 import numpy as np
 import os
 from datetime import datetime, time, timedelta
@@ -8,6 +7,19 @@ import csv
 import xlsxwriter
 import threading
 import time as timeToCount
+
+# some constants
+_poslimit = 600
+_capital = 5000.0 * _poslimit
+_sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
+_unit = 10
+_roundLimit = 7
+_takeProfit = 0.025
+_positionLevel = 0.02
+_matFilePath = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
+_marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
+_cl1ConstantsPckl = './CL1_Constants.pckl'
+_cl1VariablesPckl = './CL1_Variables.pckl'
 
 
 def getOpenDateForADatetime(dt):
@@ -25,10 +37,12 @@ def readMatsuba(filename):
         mat_value[dt] = [csvfile.loc[i, 'HIGH'], csvfile.loc[i, 'LOW']]
     return mat_dateList, mat_value
 
+# todo: change this method to get the updated matsuba value
 def getMatValue(dt, matPath, type):
     # Step1 get the open date for this market data
-    # Step2 check if there is a mat value of that day
     openDate = getOpenDateForADatetime(dt)
+
+    # Step2 check if there is a mat value of that day
     matDateList, matValueDic = readMatsuba(matPath)
     if openDate in matDateList:
         if type == 'high':
@@ -36,7 +50,7 @@ def getMatValue(dt, matPath, type):
         elif type == 'low':
             return matValueDic[openDate][1]
         else:
-            raise ValueError('invalid type')
+            raise ValueError('invalid type to get matsuba value')
     else:
         return None
 
@@ -52,7 +66,7 @@ def resetTargetList(matValue, type, roundLimit, positionLevel, sequenceForPositi
             targetList.append(
                 [matValue * np.power((1 - positionLevel), i), sequenceForPosition[i] * unit])
         else:
-            raise ValueError('type is invalid')
+            raise ValueError('invalid type to reset target list')
 
     return targetList
 
@@ -102,18 +116,6 @@ class Strategy():
 
         return shortReturn + longReturn
 
-    def resetTargetList(self, matValue, type):
-        targetList = []
-        for i in xrange(self.roundLimit):
-            if type == 'high':
-                targetList.append([matValue * np.power((1 + self.positionLevel), i), -self.sequenceForPosition[i] * self.unit])
-            elif type == 'low':
-                targetList.append([matValue * np.power((1 - self.positionLevel), i), self.sequenceForPosition[i] * self.unit])
-            else:
-                raise ValueError('type is invalid')
-
-        return targetList
-
     def calculateTakeProfitPrice(self, position, type):
         if position == 0:
             return None
@@ -124,27 +126,31 @@ class Strategy():
         else:
             raise ValueError('type is invalid')
 
-    def resetMatValue(self, type, baseTarget=0):
+    def resetMatValueAndTargetList(self, type, baseTarget=0):
         # openDate = getOpenDateForADatetime(self.dt)
         matHigh = getMatValue(dt, self.matPath, 'high')
         matLow = getMatValue(dt, self.matPath, 'low')
         if type == 'high':
             if matHigh:
                 matValue = matHigh
-                targetList = self.resetTargetList(matValue, 'high')
+                targetList = resetTargetList(matValue, 'high', self.roundLimit, self.positionLevel,
+                                             self.sequenceForPosition, self.unit)
                 if baseTarget != 0:
                     while targetList[0][0] <= baseTarget:
-                        targetList = self.resetTargetList(targetList[0][0] * (1 + self.positionLevel), 'high')
+                        targetList = resetTargetList(targetList[0][0] * (1 + self.positionLevel), 'high',
+                                                     self.roundLimit, self.positionLevel, self.sequenceForPosition, self.unit)
                 return matValue, targetList
             else:
                 return None, [[None, 0] for i in range(self.roundLimit)]
         elif type == 'low':
             if matLow:
                 matValue = matLow
-                targetList = self.resetTargetList(matValue, 'low')
+                targetList = resetTargetList(matValue, 'low', self.roundLimit, self.positionLevel,
+                                             self.sequenceForPosition, self.unit)
                 if baseTarget != 0:
                     while targetList[0][0] >= baseTarget:
-                        targetList = self.resetTargetList(targetList[0][0] * (1 - self.positionLevel))
+                        targetList = resetTargetList(targetList[0][0] * (1 - self.positionLevel), 'low',
+                                                     self.roundLimit, self.positionLevel, self.sequenceForPosition, self.unit)
                 return matValue, targetList
             else:
                 return None, [[None, 0] for i in range(self.roundLimit)]
@@ -239,7 +245,7 @@ class Strategy():
 
             self.shortPos, shortpnl, shortReturn, self.shortCashFlow = \
                 self.exitPosition('short', exitPrice, self.shortPos, self.shortCashFlow)
-            self.firstTargetHigh, self.targetHighList = self.resetMatValue('high', highPriceForDt)
+            self.firstTargetHigh, self.targetHighList = self.resetMatValueAndTargetList('high', highPriceForDt)
 
         # long exit
         if (longTakeProfitPrice and longTakeProfitPrice <= self.highPrice) or longStopLoss is True:
@@ -250,10 +256,9 @@ class Strategy():
 
             self.longPos, longpnl, longReturn, self.longCashFlow = \
                 self.exitPosition('long', exitPrice, self.longPos, self.longCashFlow)
-            self.firstTargetLow, self.targetLowList = self.resetMatValue('low', lowPriceForDt)
+            self.firstTargetLow, self.targetLowList = self.resetMatValueAndTargetList('low', lowPriceForDt)
 
         return True
-
 
 
 def start(dt, highPriceForDt, lowPriceForDt):
@@ -261,12 +266,12 @@ def start(dt, highPriceForDt, lowPriceForDt):
     # print '\nstart reading saved data'
     # print 'the time is ' + dt.strftime('%Y-%m-%d %H:%M:%S')
     try:
-        with open('./CL1_Constants.pckl') as f:
+        with open(_cl1ConstantsPckl) as f:
             poslimit, capital, sequenceForPosition, unit, roundLimit, takeProfit, positionLevel, matFilePath, marketDataFilePath = pickle.load(f)
             # print 'position limit is %d, capital is %d' % (poslimit, capital)
             # print 'unit is %d, round limit %d, take profit at %.2f%%, position level is %.2f%%' % (
             # unit, roundLimit, takeProfit * 100, positionLevel * 100)
-        with open('CL1_Variables.pckl') as f:
+        with open(_cl1VariablesPckl) as f:
             accumulateReturn, shortPos, longPos, shortCashFlow, longCashFlow, firstTargetHigh, firstTargetLow, targetHighList, targetLowList = pickle.load(f)
             # print 'short position is now at %d, long position is now at %d' % (shortPos, longPos)
             # todo change matsuba to current matsuba value
@@ -285,18 +290,18 @@ def start(dt, highPriceForDt, lowPriceForDt):
     except IOError:
         print 'this is the first time running this strategy'
         # set the constants
-        poslimit = 600
-        capital = 5000.0 * poslimit
-        sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
-        unit = 10
-        roundLimit = 7
-        takeProfit = 0.025
-        positionLevel = 0.02
-        matFilePath = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
-        marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
-        with open('./CL1_Constants.pckl', 'w') as f:
-            pickle.dump(
-                [poslimit, capital, sequenceForPosition, unit, roundLimit, takeProfit, positionLevel, matFilePath, marketDataFilePath], f)
+        poslimit = _poslimit
+        capital = _capital
+        sequenceForPosition = _sequenceForPosition
+        unit = _unit
+        roundLimit = _roundLimit
+        takeProfit = _takeProfit
+        positionLevel = _positionLevel
+        matFilePath = _matFilePath
+        marketDataFilePath = _marketDataFilePath
+        with open(_cl1ConstantsPckl, 'w') as f:
+            pickle.dump([poslimit, capital, sequenceForPosition, unit, roundLimit, takeProfit,
+                         positionLevel, matFilePath, marketDataFilePath], f)
 
         # set the variables
         accumulateReturn = 0.0
@@ -312,13 +317,14 @@ def start(dt, highPriceForDt, lowPriceForDt):
             print 'target high starts at %.2f, target low starts at %.2f' % (firstTargetHigh, firstTargetLow)
         else:
             print 'There is no target now' '''
-        with open('./CL1_Variables.pckl', 'w') as f:
+        with open(_cl1VariablesPckl, 'w') as f:
             pickle.dump([accumulateReturn, shortPos, longPos, shortCashFlow, longCashFlow,
                          firstTargetHigh, firstTargetLow, targetHighList, targetLowList], f)
 
     # Step2: use the target and market data to run the strategy
-    strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos, capital, matFilePath, sequenceForPosition,
-                       unit, roundLimit, takeProfit, positionLevel, highPriceForDt, lowPriceForDt, firstTargetHigh, firstTargetLow, targetHighList, targetLowList)
+    strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos,
+                        capital, matFilePath, sequenceForPosition, unit, roundLimit, takeProfit, positionLevel,
+                        highPriceForDt, lowPriceForDt, firstTargetHigh, firstTargetLow, targetHighList, targetLowList)
     if strategy.run():
         # Step3: write the data back
         with open('./CL1_Variables.pckl', 'w') as f:
@@ -333,17 +339,16 @@ if __name__ == '__main__':
 
     timeToTest = int((endDate - startDate).total_seconds() / timedelta(minutes=5).total_seconds())
 
+    # todo: change this to get the martket data
     marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
     csvfile = pd.read_csv(marketDataFilePath)
-    dateList = []
-    for DataIndex in csvfile.index:
-        dt = datetime.strptime(csvfile.loc[DataIndex, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
-        dateList.append(dt)
 
-    for i in xrange(timeToTest):
-        dt = startDate + i * timedelta(minutes=5)
-        if startDate <= dt <= endDate and dt in dateList:
-            index = dateList.index(dt)
-            highPriceForDt, lowPriceForDt = csvfile.loc[index, 'HIGH'], csvfile.loc[index, 'LOW']
+    for dataIndex in csvfile.index:
+        dt = datetime.strptime(csvfile.loc[dataIndex, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
+        if dt < startDate:
+            continue
+        elif endDate < dt:
+            break
+        elif startDate <= dt <= endDate:
+            highPriceForDt, lowPriceForDt = csvfile.loc[dataIndex, 'HIGH'], csvfile.loc[dataIndex, 'LOW']
             start(dt, highPriceForDt, lowPriceForDt)
-
