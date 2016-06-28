@@ -5,17 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f52e6e7b-fa8d-4e9f-ad14-473e63fb69de" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/TestCSV.py" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/CL1_Constants.pckl" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/CL1_Variables.pckl" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/TestOptimization.py" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/longinfo.csv" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/shortinfo.csv" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/store.pckl" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DoubleDown_PaperTrading.py" afterPath="$PROJECT_DIR$/DoubleDown_PaperTrading.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DoubleDown_changeablePara.py" afterPath="$PROJECT_DIR$/DoubleDown_changeablePara.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test.csv" afterPath="$PROJECT_DIR$/test.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/CL1_Variables.pckl" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/CL1_Variables.pckl" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeInfo.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeInfo.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeInfo.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeInfo.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeLog.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeLog.csv" />
     </list>
     <ignored path="Hika.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -473,7 +466,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1616" height="876" extended-state="6" />
+    <frame x="-8" y="-8" width="1616" height="876" extended-state="7" />
     <editor active="false" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15716097" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
