@@ -34,7 +34,7 @@ for i in range(_roundLimit):
 _shortInfoFileTitle = ['Date', 'high price', 'low price'] + targetHighLevels + \
                      ['order size', 'accumulated short position', 'short exit price']
 _longInfoFileTitle = ['Date', 'high price', 'low price'] + targetLowLevels + \
-                    ['order size', 'accumulated short position', 'long exit price']
+                    ['order size', 'accumulated long position', 'long exit price']
 _tradelogTitle = ['date', 'price', 'order']
 
 
@@ -273,8 +273,8 @@ class Strategy():
 
         orders = []
 
-        shortInfo, longInfo, shortTradeLog, longTradeLog = self.loadOutputList()
-        # shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
+        # shortInfo, longInfo, shortTradeLog, longTradeLog = self.loadOutputList()
+        shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
 
         # calculate take profit price
         shortTakeProfitPrice = self.calculateTakeProfitPrice(self.shortPos, 'short')
@@ -333,7 +333,7 @@ class Strategy():
             self.firstTargetLow, self.targetLowList = self.resetMatValueAndTargetList('low', lowPriceForDt)
 
         # write the output list
-        self.writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
+        # self.writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
 
         return orders
 
@@ -355,10 +355,16 @@ def start(dt, highPriceForDt, lowPriceForDt):
             if firstTargetHigh is None:
                 firstTargetHigh = getMatValue(dt, matFilePath, 'high')
                 targetHighList = resetTargetList(firstTargetHigh, 'high', roundLimit, positionLevel, sequenceForPosition, unit)
+                while targetHighList[0][0] and targetHighList[0][0] <= highPriceForDt:
+                    targetHighList = resetTargetList(targetHighList[0][0] * (1 + positionLevel), 'high',
+                                                 roundLimit, positionLevel, sequenceForPosition, unit)
 
             if firstTargetLow is None:
                 firstTargetLow = getMatValue(dt, matFilePath, 'low')
                 targetLowList = resetTargetList(firstTargetLow, 'low', roundLimit, positionLevel, sequenceForPosition, unit)
+                while targetLowList[0][0] and targetLowList[0][0] >= lowPriceForDt:
+                    targetLowList = resetTargetList(targetLowList[0][0] * (1 - positionLevel), 'low',
+                                                 roundLimit, positionLevel, sequenceForPosition, unit)
             '''
             if firstTargetHigh and firstTargetLow:
                 print 'target high starts at %.2f, target low starts at %.2f' % (firstTargetHigh, firstTargetLow)
@@ -399,7 +405,7 @@ def start(dt, highPriceForDt, lowPriceForDt):
                          firstTargetHigh, firstTargetLow, targetHighList, targetLowList], f)
 
         # create the output csv file
-        createOutputInfoFile()
+        # createOutputInfoFile()
 
     # Step2: use the target and market data to run the strategy
     strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos,

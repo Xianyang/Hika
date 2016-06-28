@@ -1,12 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="BookmarkManager">
-    <bookmark url="file://$PROJECT_DIR$/DoubleDown_changeablePara.py" line="461" />
+    <bookmark url="file://$PROJECT_DIR$/DoubleDown_changeablePara.py" line="465" />
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f52e6e7b-fa8d-4e9f-ad14-473e63fb69de" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/New folder/CL1_Constants.pckl" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/New folder/CL1_Variables.pckl" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/test.csv" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DoubleDown_PaperTrading.py" afterPath="$PROJECT_DIR$/DoubleDown_PaperTrading.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/DoubleDown_changeablePara.py" afterPath="$PROJECT_DIR$/DoubleDown_changeablePara.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_pnl_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_pnl_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_pnl_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_pnl_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_totalreturn.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_totalreturn.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradeinfo_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradeinfo_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradeinfo_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradeinfo_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradelog_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradelog_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradelog_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/5min_tradelog_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/pnlToPdf.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160104_20160331/pnlToPdf.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_pnl_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_pnl_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_pnl_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_pnl_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_totalreturn.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_totalreturn.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradeinfo_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradeinfo_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradeinfo_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradeinfo_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradelog_long.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradelog_long.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradelog_short.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/5min_tradelog_short.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/pnlToPdf.csv" afterPath="$PROJECT_DIR$/OutputCP/Unit10_20160201_20160429/pnlToPdf.csv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/CL1_Variables.pckl" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/CL1_Variables.pckl" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeInfo.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeInfo.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeLog.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/longTradeLog.csv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeInfo.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeInfo.csv" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeLog.csv" afterPath="$PROJECT_DIR$/ParaAndOutputForPaperTrading/shortTradeLog.csv" />
     </list>
@@ -32,34 +55,44 @@
       <file leaf-file-name="DoubleDown_5min.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DoubleDown_5min.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="400">
-              <caret line="22" column="18" selection-start-line="22" selection-start-column="18" selection-end-line="22" selection-end-column="18" />
+            <state relative-caret-position="440">
+              <caret line="69" column="52" selection-start-line="69" selection-start-column="52" selection-end-line="69" selection-end-column="52" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="DoubleDown_changeablePara.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="DoubleDown_changeablePara.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DoubleDown_changeablePara.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="376">
-              <caret line="546" column="47" selection-start-line="546" selection-start-column="47" selection-end-line="546" selection-end-column="47" />
+            <state relative-caret-position="522">
+              <caret line="301" column="39" selection-start-line="301" selection-start-column="39" selection-end-line="301" selection-end-column="39" />
               <folding>
                 <element signature="e#0#19#0" expanded="true" />
-                <element signature="e#19776#23675#0" expanded="false" />
+                <element signature="e#19958#23857#0" expanded="false" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="DoubleDown_PaperTrading.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="DoubleDown_PaperTrading.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DoubleDown_PaperTrading.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="287">
-              <caret line="409" column="20" selection-start-line="409" selection-start-column="20" selection-end-line="409" selection-end-column="20" />
+            <state relative-caret-position="-7440">
+              <caret line="15" column="15" selection-start-line="15" selection-start-column="15" selection-end-line="15" selection-end-column="15" />
               <folding>
                 <element signature="e#0#19#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="parsers.py" pinned="false" current-in-tab="false">
+        <entry file="file://C:/Python27/Lib/site-packages/pandas/io/parsers.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="145">
+              <caret line="1212" column="0" selection-start-line="1212" selection-start-column="0" selection-end-line="1212" selection-end-column="0" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -211,6 +244,7 @@
   <component name="PropertiesComponent">
     <property name="settings.editor.selected.configurable" value="preferences.keymap" />
     <property name="settings.editor.splitter.proportion" value="0.23212537" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Candle" />
   </component>
   <component name="RunManager" selected="Python.DoubleDown_PaperTrading">
     <configuration default="false" name="DoubleDown_changeablePara" type="PythonConfigurationType" factoryName="Python" temporary="true">
@@ -466,19 +500,19 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="1616" height="876" extended-state="7" />
-    <editor active="false" />
+    <frame x="-8" y="-8" width="1616" height="876" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.15716097" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.36962366" sideWeight="0.50253487" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3293011" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Run" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.47715053" sideWeight="0.49746513" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.47311828" sideWeight="0.49746513" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.44623655" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.37634408" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
@@ -558,7 +592,7 @@
           </properties>
         </breakpoint>
       </default-breakpoints>
-      <option name="time" value="141" />
+      <option name="time" value="148" />
     </breakpoint-manager>
     <watches-manager />
   </component>
@@ -577,7 +611,7 @@
           <caret line="557" column="4" selection-start-line="557" selection-start-column="4" selection-end-line="557" selection-end-column="4" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -640,7 +674,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -675,7 +709,7 @@
           <caret line="375" column="11" selection-start-line="375" selection-start-column="11" selection-end-line="375" selection-end-column="11" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -702,7 +736,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -721,7 +755,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -740,7 +774,7 @@
           <caret line="0" column="0" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -807,14 +841,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DoubleDown_5min.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="400">
-          <caret line="22" column="18" selection-start-line="22" selection-start-column="18" selection-end-line="22" selection-end-column="18" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/Python27/Lib/pickle.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="27540">
@@ -851,17 +877,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DoubleDown_changeablePara.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="376">
-          <caret line="546" column="47" selection-start-line="546" selection-start-column="47" selection-end-line="546" selection-end-column="47" />
-          <folding>
-            <element signature="e#0#19#0" expanded="true" />
-            <element signature="e#19776#23675#0" expanded="false" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://C:/Python27/Lib/site-packages/pandas/io/common.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="365">
@@ -870,12 +885,39 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/DoubleDown_5min.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="440">
+          <caret line="69" column="52" selection-start-line="69" selection-start-column="52" selection-end-line="69" selection-end-column="52" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://C:/Python27/Lib/site-packages/pandas/io/parsers.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="145">
+          <caret line="1212" column="0" selection-start-line="1212" selection-start-column="0" selection-end-line="1212" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DoubleDown_PaperTrading.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="287">
-          <caret line="409" column="20" selection-start-line="409" selection-start-column="20" selection-end-line="409" selection-end-column="20" />
+        <state relative-caret-position="-7440">
+          <caret line="15" column="15" selection-start-line="15" selection-start-column="15" selection-end-line="15" selection-end-column="15" />
           <folding>
             <element signature="e#0#19#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DoubleDown_changeablePara.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="522">
+          <caret line="301" column="39" selection-start-line="301" selection-start-column="39" selection-end-line="301" selection-end-column="39" />
+          <folding>
+            <element signature="e#0#19#0" expanded="true" />
+            <element signature="e#19958#23857#0" expanded="false" />
           </folding>
         </state>
       </provider>

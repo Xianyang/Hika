@@ -54,9 +54,9 @@ class Strategy():
         targetList = []
         for i in xrange(roundLimit):
             if type == 'high':
-                targetList.append([matValue * np.power((1 + percentForALevel), i), -sequenceForPosition[i] * unit])
+                targetList.append([round(matValue * np.power((1 + percentForALevel), i), 2), -sequenceForPosition[i] * unit])
             elif type == 'low':
-                targetList.append([matValue * np.power((1 - percentForALevel), i), sequenceForPosition[i] * unit])
+                targetList.append([round(matValue * np.power((1 - percentForALevel), i), 2), sequenceForPosition[i] * unit])
             else:
                 raise ValueError('type is invalid')
 
@@ -325,32 +325,36 @@ class Strategy():
         shortInfofile.to_csv(self.resultPath + "5min_tradeinfo_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 2
-        shortTradefile = pd.DataFrame(shortTrade, columns=['date', 'price', 'order'])
-        shortTradefile.to_csv(self.resultPath + "5min_tradelog_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
+        if len(shortTrade):
+            shortTradefile = pd.DataFrame(shortTrade, columns=['date', 'price', 'order'])
+            shortTradefile.to_csv(self.resultPath + "5min_tradelog_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 3
         sumOfShortPNL = 0
-        for shortPNLEntry in shortPNL:
-            sumOfShortPNL += shortPNLEntry[-1]
-        shortPNL.append(['Sum', sumOfShortPNL])
-        shortpnlfile = pd.DataFrame(shortPNL, columns=['date', 'short cashflow', 'exit order', 'exit price', 'return'])
-        shortpnlfile.to_csv(self.resultPath + "5min_pnl_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
+        if len(shortPNL):
+            for shortPNLEntry in shortPNL:
+                sumOfShortPNL += shortPNLEntry[-1]
+            shortPNL.append(['Sum', sumOfShortPNL])
+            shortpnlfile = pd.DataFrame(shortPNL, columns=['date', 'short cashflow', 'exit order', 'exit price', 'return'])
+            shortpnlfile.to_csv(self.resultPath + "5min_pnl_short.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 4
         longInfofile = pd.DataFrame(longInfo, columns=longInfoFileTitle)
         longInfofile.to_csv(self.resultPath + "5min_tradeinfo_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 5
-        longTradefile = pd.DataFrame(longTrade, columns=['date', 'price', 'order'])
-        longTradefile.to_csv(self.resultPath + "5min_tradelog_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
+        if len(longTrade):
+            longTradefile = pd.DataFrame(longTrade, columns=['date', 'price', 'order'])
+            longTradefile.to_csv(self.resultPath + "5min_tradelog_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 6
         sumOfLongPNL = 0
-        for longPNLEntry in longPNL:
-            sumOfLongPNL += longPNLEntry[-1]
-        longPNL.append(['Sum', sumOfLongPNL])
-        longpnlfile = pd.DataFrame(longPNL, columns=['date', 'long cashflow', 'exit order', 'exit price', 'return'])
-        longpnlfile.to_csv(self.resultPath + "5min_pnl_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
+        if len(longPNL):
+            for longPNLEntry in longPNL:
+                sumOfLongPNL += longPNLEntry[-1]
+            longPNL.append(['Sum', sumOfLongPNL])
+            longpnlfile = pd.DataFrame(longPNL, columns=['date', 'long cashflow', 'exit order', 'exit price', 'return'])
+            longpnlfile.to_csv(self.resultPath + "5min_pnl_long.csv", date_format="%Y-%m-%d %H:%M:%S", index=False)
 
         # 7
         totalpnl = pd.DataFrame(totalResult,
@@ -532,6 +536,24 @@ def threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketD
     workbook.close()
 
 
+def threeMonthPortfolio(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition):
+    daysToTest = ((enddate - startdate).days - 30 * 3) / 10 + 1
+    if daysToTest <= 0:
+        return None
+
+    for i in range(daysToTest):
+        startOfStrategy = timedelta(days=i*10) + startdate
+        endOfStrategy = timedelta(days=90) + startOfStrategy
+        print 'start on ' + startOfStrategy.strftime('%Y-%m-%d')
+        print 'end on ' + endOfStrategy.strftime('%Y-%m-%d')
+
+        strategy = Strategy(poslimit, capital, startOfStrategy, endOfStrategy, mat_dateList, mat_value, marketDataFilePath)
+        if not strategy.prepareDirectory(unit):
+            print 'create directory fail'
+            return None
+        strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
+
+
 def startStrategy():
     poslimit = 600
     capital = 5000.0 * poslimit
@@ -555,13 +577,15 @@ def startStrategy():
         print 'create directory fail'
         return None
     # strategy.run(unit, sequenceForPosition, roundLimit=4, takeProfit=0.03, percentForALevel=0.03, exitAtEnd=True)
-    strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
+    # strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
 
     '''threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
                roundLimit=7, takeProfit=0.025, positionLevel=0.02)
     threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
                roundLimit=6, takeProfit=0.025, positionLevel=0.025)'''
     # findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
+
+    threeMonthPortfolio(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
 
 if __name__ == "__main__":
