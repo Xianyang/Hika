@@ -1,0 +1,37 @@
+(lp0
+I600
+aF3000000.0
+a(dp1
+I0
+I1
+sI1
+I1
+sI2
+I2
+sI3
+I4
+sI4
+I8
+sI5
+I16
+sI6
+I32
+sI7
+I64
+sI8
+I128
+sI9
+I256
+sI10
+I512
+sI11
+I1024
+saI10
+aI7
+aF0.025
+aF0.02
+aS'./Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
+p2
+aS'./Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
+p3
+a.

@@ -18,8 +18,38 @@ _takeProfit = 0.025
 _positionLevel = 0.02
 _matFilePath = './Data/CL1 COMDTY_res2_2015-12-31_2016-06-17.csv'
 _marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
-_cl1ConstantsPckl = './CL1_Constants.pckl'
-_cl1VariablesPckl = './CL1_Variables.pckl'
+_cl1ConstantsPckl = './ParaAndOutputForPaperTrading/CL1_Constants.pckl'
+_cl1VariablesPckl = './ParaAndOutputForPaperTrading/CL1_Variables.pckl'
+_shortTradeInfoPath = './ParaAndOutputForPaperTrading/shortTradeInfo.csv'
+_longTradeInfoPath = './ParaAndOutputForPaperTrading/longTradeInfo.csv'
+_shortTradeLogPath = './ParaAndOutputForPaperTrading/shortTradeLog.csv'
+_longTradeLogPath = './ParaAndOutputForPaperTrading/longTradeLog.csv'
+
+targetHighLevels, targetLowLevels = [], []
+for i in range(_roundLimit):
+    highLevel = 'target high level %d' % (i + 1)
+    lowLevel = 'target low level %d' % (i + 1)
+    targetHighLevels.append(highLevel)
+    targetLowLevels.append(lowLevel)
+_shortInfoFileTitle = ['Date', 'high price', 'low price'] + targetHighLevels + \
+                     ['order size', 'accumulated short position', 'short exit price']
+_longInfoFileTitle = ['Date', 'high price', 'low price'] + targetLowLevels + \
+                    ['order size', 'accumulated short position', 'long exit price']
+_tradelogTitle = ['date', 'price', 'order']
+
+
+def createOutputInfoFile():
+    shortInfofile = pd.DataFrame([], columns=_shortInfoFileTitle)
+    shortInfofile.to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+    longInfofile = pd.DataFrame([], columns=_longInfoFileTitle)
+    longInfofile.to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+    shortTradeLogFile = pd.DataFrame([], columns=_tradelogTitle)
+    shortTradeLogFile.to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+    longTradeLogFile = pd.DataFrame([], columns=_tradelogTitle)
+    longTradeLogFile.to_csv(_longTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
 
 
 def getOpenDateForADatetime(dt):
@@ -27,6 +57,7 @@ def getOpenDateForADatetime(dt):
         return dt.date()
     else:
         return (dt - timedelta(1)).date()
+
 
 def readMatsuba(filename):
     mat_dateList, mat_value = [], {}
@@ -37,32 +68,34 @@ def readMatsuba(filename):
         mat_value[dt] = [csvfile.loc[i, 'HIGH'], csvfile.loc[i, 'LOW']]
     return mat_dateList, mat_value
 
+
 # todo: change this method to get the updated matsuba value
-def getMatValue(dt, matPath, type):
+def getMatValue(dt, matPath, positionType):
     # Step1 get the open date for this market data
     openDate = getOpenDateForADatetime(dt)
 
     # Step2 check if there is a mat value of that day
     matDateList, matValueDic = readMatsuba(matPath)
     if openDate in matDateList:
-        if type == 'high':
+        if positionType == 'high':
             return matValueDic[openDate][0]
-        elif type == 'low':
+        elif positionType == 'low':
             return matValueDic[openDate][1]
         else:
             raise ValueError('invalid type to get matsuba value')
     else:
         return None
 
-def resetTargetList(matValue, type, roundLimit, positionLevel, sequenceForPosition, unit):
+
+def resetTargetList(matValue, positionType, roundLimit, positionLevel, sequenceForPosition, unit):
     if matValue is None:
         return [[None, 0] for i in range(roundLimit)]
     targetList = []
     for i in xrange(roundLimit):
-        if type == 'high':
+        if positionType == 'high':
             targetList.append(
                 [matValue * np.power((1 + positionLevel), i), -sequenceForPosition[i] * unit])
-        elif type == 'low':
+        elif positionType == 'low':
             targetList.append(
                 [matValue * np.power((1 - positionLevel), i), sequenceForPosition[i] * unit])
         else:
@@ -99,7 +132,7 @@ class Strategy():
         self.resultPath = ''
 
     def prepareDirectory(self):  # prepare both database and backup folders
-        self.resultPath = './PaperTrading'
+        self.resultPath = './ParaAndOutputForPaperTrading'
         if not os.path.exists(self.resultPath):
             try:
                 os.makedirs(self.resultPath)
@@ -116,21 +149,42 @@ class Strategy():
 
         return shortReturn + longReturn
 
-    def calculateTakeProfitPrice(self, position, type):
+    def loadOutputList(self):
+        shortInfoList = pd.read_csv(_shortTradeInfoPath).values.tolist()
+        longInfoList = pd.read_csv(_longTradeInfoPath).values.tolist()
+        shortTradeLogList = pd.read_csv(_shortTradeLogPath).values.tolist()
+        longTradeLogList = pd.read_csv(_longTradeLogPath).values.tolist()
+
+        return shortInfoList, longInfoList, shortTradeLogList, longTradeLogList
+
+    def writeOutputList(self, shortInfoList, longInfoList, shortTradeLogList, longTradeLogList):
+        shortInfofile = pd.DataFrame(shortInfoList, columns=_shortInfoFileTitle)
+        shortInfofile.to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+        longInfofile = pd.DataFrame(longInfoList, columns=_longInfoFileTitle)
+        longInfofile.to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+        shortTradeLogFile = pd.DataFrame(shortTradeLogList, columns=_tradelogTitle)
+        shortTradeLogFile.to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+        longTradeLogFile = pd.DataFrame(longTradeLogList, columns=_tradelogTitle)
+        longTradeLogFile.to_csv(_longTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+
+    def calculateTakeProfitPrice(self, position, positionType):
         if position == 0:
             return None
-        if type == 'short':
+        if positionType == 'short':
             return abs(self.shortCashFlow / position) * (1 - self.takeProfit)
-        elif type == 'long':
+        elif positionType == 'long':
             return abs(self.longCashFlow / position) * (1 + self.takeProfit)
         else:
-            raise ValueError('type is invalid')
+            raise ValueError('invalid type to calculate take profit price')
 
-    def resetMatValueAndTargetList(self, type, baseTarget=0):
+    def resetMatValueAndTargetList(self, positionType, baseTarget=0):
         # openDate = getOpenDateForADatetime(self.dt)
         matHigh = getMatValue(dt, self.matPath, 'high')
         matLow = getMatValue(dt, self.matPath, 'low')
-        if type == 'high':
+        if positionType == 'high':
             if matHigh:
                 matValue = matHigh
                 targetList = resetTargetList(matValue, 'high', self.roundLimit, self.positionLevel,
@@ -142,7 +196,7 @@ class Strategy():
                 return matValue, targetList
             else:
                 return None, [[None, 0] for i in range(self.roundLimit)]
-        elif type == 'low':
+        elif positionType == 'low':
             if matLow:
                 matValue = matLow
                 targetList = resetTargetList(matValue, 'low', self.roundLimit, self.positionLevel,
@@ -157,13 +211,10 @@ class Strategy():
         else:
             return None, [[None, 0] for i in range(self.roundLimit)]
 
-    def getExerciseList(self, targetList):
-        if targetList[-1][0] is None:
-            return [], False
-
+    def getExerciseList(self, targetList, positionType):
         exerciseList = []
         stopLoss = False
-        # if the candle covers the target, the add teh target to execise list or exit
+        # if the candle covers the target, the add the target to execise list or exit
         for index, [price, size] in enumerate(targetList):
             if price and self.lowPrice <= price <= self.highPrice:
                 # if the price hits the last level, then stop loss
@@ -171,70 +222,91 @@ class Strategy():
                     stopLoss = True
                     return [], stopLoss
                 else:
-                    exerciseList.append([price, size])
+                    exerciseList.append([price, size, positionType])
                     targetList[index] = [None, 0]
 
         return exerciseList, stopLoss
 
-    def exercise(self, exerciseList, position, cashFlow, type):
-        for price, size in exerciseList:
-            # hit the limit position, set a new size
-            if abs(size + self.netPosition) > self.poslimit:
-                if type == 'short':
-                    size = -(self.poslimit - abs(self.netPosition))
-                elif type == 'long':
+    def exercise(self, exerciseList, position, cashFlow, infoList, tradeLogList, positionType):
+        for price, size, exerciseType in exerciseList:
+            # if the price hits the limit position, the it should set a new size for this price
+            if self.poslimit < abs(size + self.netPosition):
+                if positionType == 'short':
+                    size = -self.poslimit - self.netPosition
+                elif positionType == 'long':
                     size = self.poslimit - self.netPosition
                 else:
-                    raise ValueError('type is invalid')
+                    raise ValueError('invalid type to exercise')
 
                 if size == 0:
                     continue
-                print type + ' exercise hits the position limit and the new size is %d' % size
+                print positionType + ' exercise hits the position limit and the new size is %d' % size
 
             position += size
             self.netPosition += size
+            infoList[-1][-3] += size
+            tradeLogList.append([self.dt, price, size])
             cashFlow += 0 - price * size
-            # infoList[-1][-3] += size
-            # tradeList.append([self.dt, price, size])
-            print type + ' exercise at $%.2f for %d position on ' % (price, size) + self.dt.strftime(
-                '%Y-%m-%d %H:%M')
+            print positionType + ' exercise at $%.2f for %d position on ' % (price, size) + self.dt.strftime('%Y-%m-%d %H:%M')
 
         return position, cashFlow
 
-    def exitPosition(self, type, exitPrice, position, cashflow):
+    def exitPosition(self, positionType, exitPrice, position, cashflow, targetList, infoList, tradeLogList):
         exitorder = 0 - position
         position = 0
         self.netPosition += exitorder
         pnl = cashflow - exitorder * exitPrice
         exitReturn = 1000 * pnl / self.capital
         self.accumulateReturn += exitReturn
+        infoList.append(
+            [self.dt, self.highPrice, self.lowPrice] + [i[0] for i in targetList] + [exitorder, position, exitPrice])
+        tradeLogList.append([self.dt, exitPrice, exitorder])
         cashflow = 0.0
-        print type + ' exit at $%.2f, return is %.2f%% on ' % (exitPrice, exitReturn * 100) + self.dt.strftime(
+        print positionType + ' exit at $%.2f, return is %.2f%% on ' % (exitPrice, exitReturn * 100) + self.dt.strftime(
             '%Y-%m-%d %H:%M')
         return position, pnl, exitReturn, cashflow
 
     def run(self):
         # there is no mat value
         if self.firstTargetHigh is None and self.firstTargetLow is None:
-            return False
+            return []
+
+        orders = []
+
+        shortInfo, longInfo, shortTradeLog, longTradeLog = self.loadOutputList()
+        # shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
 
         # calculate take profit price
         shortTakeProfitPrice = self.calculateTakeProfitPrice(self.shortPos, 'short')
         longTakeProfitPrice = self.calculateTakeProfitPrice(self.longPos, 'long')
 
+        # add the info to info list
+        shortInfo.append([self.dt, self.highPrice, self.lowPrice] + [i[0] for i in self.targetHighList] +
+                         [0, self.shortPos, shortTakeProfitPrice])
+        longInfo.append([self.dt, self.highPrice, self.lowPrice] + [i[0] for i in self.targetLowList] +
+                         [0, self.longPos, longTakeProfitPrice])
+
         # check if short exercise or long exercise
-        shortExerciseList, shortStopLoss = self.getExerciseList(self.targetHighList)
-        longExerciseList, longStopLoss = self.getExerciseList(self.targetLowList)
+        shortExerciseList, shortStopLoss = self.getExerciseList(self.targetHighList, 'short')
+        longExerciseList, longStopLoss = self.getExerciseList(self.targetLowList, 'long')
+        orders = shortExerciseList + longExerciseList
 
         # short exercise
         if len(shortExerciseList) != 0 and shortStopLoss is False:
-            self.shortPos, self.shortCashFlow = self.exercise(shortExerciseList, self.shortPos, self.shortCashFlow, 'short')
+            self.shortPos, self.shortCashFlow = self.exercise(shortExerciseList, self.shortPos,
+                                                              self.shortCashFlow, shortInfo, shortTradeLog, 'short')
             shortTakeProfitPrice = self.calculateTakeProfitPrice(self.shortPos, 'short')
+            shortInfo[-1][-2] = self.shortPos
+            shortInfo[-1][-1] = shortTakeProfitPrice
 
         # long exercise
         if len(longExerciseList) != 0 and longStopLoss is False:
-            self.longPos, self.longCashFlow = self.exercise(longExerciseList, self.longPos, self.longCashFlow, 'long')
+            self.longPos, self.longCashFlow = self.exercise(longExerciseList, self.longPos,
+                                                            self.longCashFlow, longInfo, longTradeLog, 'long')
             longTakeProfitPrice = self.calculateTakeProfitPrice(self.longPos, 'long')
+            longInfo[-1][-2] = self.longPos
+            longInfo[-1][-1] = longTakeProfitPrice
+
 
         # short exit
         if (shortTakeProfitPrice and self.lowPrice <= shortTakeProfitPrice) or shortStopLoss is True:
@@ -243,8 +315,9 @@ class Strategy():
             elif shortStopLoss is True:
                 exitPrice = self.lowPrice
 
+            orders.append([exitPrice, self.shortPos, 'short_exit'])
             self.shortPos, shortpnl, shortReturn, self.shortCashFlow = \
-                self.exitPosition('short', exitPrice, self.shortPos, self.shortCashFlow)
+                self.exitPosition('short', exitPrice, self.shortPos, self.shortCashFlow, self.targetHighList, shortInfo, shortTradeLog)
             self.firstTargetHigh, self.targetHighList = self.resetMatValueAndTargetList('high', highPriceForDt)
 
         # long exit
@@ -254,11 +327,15 @@ class Strategy():
             elif longStopLoss is True:
                 exitPrice = self.highPrice
 
+            orders.append([exitPrice, self.longPos, 'long_exit'])
             self.longPos, longpnl, longReturn, self.longCashFlow = \
-                self.exitPosition('long', exitPrice, self.longPos, self.longCashFlow)
+                self.exitPosition('long', exitPrice, self.longPos, self.longCashFlow, self.targetLowList, longInfo, longTradeLog)
             self.firstTargetLow, self.targetLowList = self.resetMatValueAndTargetList('low', lowPriceForDt)
 
-        return True
+        # write the output list
+        self.writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
+
+        return orders
 
 
 def start(dt, highPriceForDt, lowPriceForDt):
@@ -321,21 +398,27 @@ def start(dt, highPriceForDt, lowPriceForDt):
             pickle.dump([accumulateReturn, shortPos, longPos, shortCashFlow, longCashFlow,
                          firstTargetHigh, firstTargetLow, targetHighList, targetLowList], f)
 
+        # create the output csv file
+        createOutputInfoFile()
+
     # Step2: use the target and market data to run the strategy
     strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos,
                         capital, matFilePath, sequenceForPosition, unit, roundLimit, takeProfit, positionLevel,
                         highPriceForDt, lowPriceForDt, firstTargetHigh, firstTargetLow, targetHighList, targetLowList)
-    if strategy.run():
-        # Step3: write the data back
-        with open('./CL1_Variables.pckl', 'w') as f:
-            pickle.dump([strategy.accumulateReturn, strategy.shortPos, strategy.longPos, strategy.shortCashFlow, strategy.longCashFlow
-                            , strategy.firstTargetHigh, strategy.firstTargetLow, strategy.targetHighList, strategy.targetLowList], f)
+    orders = strategy.run()
+    if len(orders):
+        print orders
+
+    # Step3: write the data back
+    with open(_cl1VariablesPckl, 'w') as f:
+        pickle.dump([strategy.accumulateReturn, strategy.shortPos, strategy.longPos, strategy.shortCashFlow, strategy.longCashFlow
+                        , strategy.firstTargetHigh, strategy.firstTargetLow, strategy.targetHighList, strategy.targetLowList], f)
 
 
 if __name__ == '__main__':
-
     startDate = datetime(2016, 1, 1, 0, 0, 0)
-    endDate = datetime(2016, 5, 31, 16, 55, 0)
+    # endDate = datetime(2016, 5, 31, 16, 55, 0)
+    endDate = datetime(2016, 6, 16, 16, 55, 0)
 
     timeToTest = int((endDate - startDate).total_seconds() / timedelta(minutes=5).total_seconds())
 

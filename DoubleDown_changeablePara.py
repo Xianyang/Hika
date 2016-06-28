@@ -306,7 +306,7 @@ class Strategy():
                         resultForPnlPdf.append([dt.strftime('%Y-%m-%d'), closePriceForDt, self.dailyReturn(shortreturn, longreturn)])
                         shortpnl, longpnl, shortreturn, longreturn = None, None, None, None
 
-        '''
+
         # 1
         targetHighLevels, targetLowLevels = [], []
         for i in range(roundLimit):
@@ -365,7 +365,7 @@ class Strategy():
         # print some results
         print 'total return for short is %.2f' % (sumOfShortPNL * 100) + '%'
         print 'total return for long is %.2f' % (sumOfLongPNL * 100) + '%'
-        '''
+
         print 'total return without exit is %.3f%%, with exit is %.3f%% \n' % (accumulateReturn * 100, accumulateReturnWithExit * 100)
         return accumulateReturn, accumulateReturnWithExit
 
