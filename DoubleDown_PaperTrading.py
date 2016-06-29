@@ -9,6 +9,7 @@ import threading
 import time as timeToCount
 
 # some constants
+_cl1NewDateStartAtHour = 18
 _poslimit = 600
 _capital = 5000.0 * _poslimit
 _sequenceForPosition = {0: 1, 1: 1, 2: 2, 3: 4, 4: 8, 5: 16, 6: 32, 7: 64, 8: 128, 9: 256, 10: 512, 11: 1024}
@@ -38,25 +39,29 @@ _longInfoFileTitle = ['Date', 'high price', 'low price'] + targetLowLevels + \
 _tradelogTitle = ['date', 'price', 'order']
 
 
-def createOutputInfoFile():
-    shortInfofile = pd.DataFrame([], columns=_shortInfoFileTitle)
-    shortInfofile.to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+def writeOutputList(shortInfoList=[], longInfoList=[], shortTradeLogList=[], longTradeLogList=[]):
+    # create 4 csv files to save trade info
+    # this method will only be called at the very first time the strategy runs
+    pd.DataFrame(shortInfoList, columns=_shortInfoFileTitle).to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+    pd.DataFrame(longInfoList, columns=_longInfoFileTitle).to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+    pd.DataFrame(shortTradeLogList, columns=_tradelogTitle).to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+    pd.DataFrame(longTradeLogList, columns=_tradelogTitle).to_csv(_longTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
 
-    longInfofile = pd.DataFrame([], columns=_longInfoFileTitle)
-    longInfofile.to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
 
-    shortTradeLogFile = pd.DataFrame([], columns=_tradelogTitle)
-    shortTradeLogFile.to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+def loadOutputList():
+    shortInfoList = pd.read_csv(_shortTradeInfoPath).values.tolist()
+    longInfoList = pd.read_csv(_longTradeInfoPath).values.tolist()
+    shortTradeLogList = pd.read_csv(_shortTradeLogPath).values.tolist()
+    longTradeLogList = pd.read_csv(_longTradeLogPath).values.tolist()
 
-    longTradeLogFile = pd.DataFrame([], columns=_tradelogTitle)
-    longTradeLogFile.to_csv(_longTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
+    return shortInfoList, longInfoList, shortTradeLogList, longTradeLogList
 
 
 def getOpenDateForADatetime(dt):
-    if time(18) <= dt.time():
+    if time(_cl1NewDateStartAtHour) <= dt.time():
         return dt.date()
     else:
-        return (dt - timedelta(1)).date()
+        return (dt - timedelta(days=1)).date()
 
 
 def readMatsuba(filename):
@@ -93,11 +98,9 @@ def resetTargetList(matValue, positionType, roundLimit, positionLevel, sequenceF
     targetList = []
     for i in xrange(roundLimit):
         if positionType == 'high':
-            targetList.append(
-                [matValue * np.power((1 + positionLevel), i), -sequenceForPosition[i] * unit])
+            targetList.append([matValue * np.power((1 + positionLevel), i), -sequenceForPosition[i] * unit])
         elif positionType == 'low':
-            targetList.append(
-                [matValue * np.power((1 - positionLevel), i), sequenceForPosition[i] * unit])
+            targetList.append([matValue * np.power((1 - positionLevel), i), sequenceForPosition[i] * unit])
         else:
             raise ValueError('invalid type to reset target list')
 
@@ -131,7 +134,8 @@ class Strategy():
         self.targetLowList = targetLowList
         self.resultPath = ''
 
-    def prepareDirectory(self):  # prepare both database and backup folders
+    # prepare the dic to save constants, variables and trade info
+    def prepareDirectory(self):
         self.resultPath = './ParaAndOutputForPaperTrading'
         if not os.path.exists(self.resultPath):
             try:
@@ -148,27 +152,6 @@ class Strategy():
             longReturn = 0
 
         return shortReturn + longReturn
-
-    def loadOutputList(self):
-        shortInfoList = pd.read_csv(_shortTradeInfoPath).values.tolist()
-        longInfoList = pd.read_csv(_longTradeInfoPath).values.tolist()
-        shortTradeLogList = pd.read_csv(_shortTradeLogPath).values.tolist()
-        longTradeLogList = pd.read_csv(_longTradeLogPath).values.tolist()
-
-        return shortInfoList, longInfoList, shortTradeLogList, longTradeLogList
-
-    def writeOutputList(self, shortInfoList, longInfoList, shortTradeLogList, longTradeLogList):
-        shortInfofile = pd.DataFrame(shortInfoList, columns=_shortInfoFileTitle)
-        shortInfofile.to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
-
-        longInfofile = pd.DataFrame(longInfoList, columns=_longInfoFileTitle)
-        longInfofile.to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
-
-        shortTradeLogFile = pd.DataFrame(shortTradeLogList, columns=_tradelogTitle)
-        shortTradeLogFile.to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
-
-        longTradeLogFile = pd.DataFrame(longTradeLogList, columns=_tradelogTitle)
-        longTradeLogFile.to_csv(_longTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
 
     def calculateTakeProfitPrice(self, position, positionType):
         if position == 0:
@@ -271,10 +254,8 @@ class Strategy():
         if self.firstTargetHigh is None and self.firstTargetLow is None:
             return []
 
-        orders = []
-
-        # shortInfo, longInfo, shortTradeLog, longTradeLog = self.loadOutputList()
-        shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
+        shortInfo, longInfo, shortTradeLog, longTradeLog = loadOutputList()
+        # shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
 
         # calculate take profit price
         shortTakeProfitPrice = self.calculateTakeProfitPrice(self.shortPos, 'short')
@@ -333,7 +314,7 @@ class Strategy():
             self.firstTargetLow, self.targetLowList = self.resetMatValueAndTargetList('low', lowPriceForDt)
 
         # write the output list
-        # self.writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
+        writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
 
         return orders
 
@@ -405,7 +386,7 @@ def start(dt, highPriceForDt, lowPriceForDt):
                          firstTargetHigh, firstTargetLow, targetHighList, targetLowList], f)
 
         # create the output csv file
-        # createOutputInfoFile()
+        writeOutputList()
 
     # Step2: use the target and market data to run the strategy
     strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos,

@@ -144,7 +144,11 @@ class Strategy():
         return position, netPosition, cashFlow
 
     def exitPosition(self, type, dt, exitPrice, position, netPos, accumulateReturn, cashflow, highPriceForDt,
-                  lowPriceForDt, targetList, pnlList, infoList, tradeList):
+                  lowPriceForDt, targetList, pnlList, infoList, tradeList, dailypnl, dailyReturn):
+        if dailypnl is None:
+            dailypnl = 0
+        if dailyReturn is None:
+            dailyReturn = 0
         exitorder = 0 - position
         position = 0
         netPos += exitorder
@@ -158,7 +162,9 @@ class Strategy():
         cashflow = 0.0
         print type + ' exit at $%.2f, return is %.2f%% on ' % (exitPrice, exitReturn * 100) + dt.strftime(
             '%Y-%m-%d %H:%M')
-        return position, netPos, pnl, exitReturn, accumulateReturn, cashflow
+        dailypnl += pnl
+        dailyReturn += exitReturn
+        return position, netPos, dailypnl, dailyReturn, accumulateReturn, cashflow
 
     def run(self, unit, sequenceForPosition, roundLimit, takeProfit, percentForALevel, exitAtEnd):
         # check if round limit is valid
@@ -245,7 +251,7 @@ class Strategy():
 
                     shortPos, netPos, shortpnl, shortreturn, accumulateReturn, shortCashFlow = \
                         self.exitPosition('short', dt, exitPrice, shortPos, netPos, accumulateReturn, shortCashFlow, highPriceForDt, lowPriceForDt, target_high,
-                                  shortPNL, shortInfo, shortTrade)
+                                  shortPNL, shortInfo, shortTrade, shortpnl, shortreturn)
                     mat_high, target_high = self.resetMatValue(dt, 'high', unit, sequenceForPosition,
                                                                roundLimit, percentForALevel, highPriceForDt)
 
@@ -258,7 +264,7 @@ class Strategy():
                     longPos, netPos, longpnl, longreturn, accumulateReturn, longCashFlow = \
                         self.exitPosition('long', dt, exitPrice, longPos, netPos, accumulateReturn, longCashFlow,
                                           highPriceForDt, lowPriceForDt, target_low,
-                                          longPNL, longInfo, longTrade)
+                                          longPNL, longInfo, longTrade, longpnl, longreturn)
                     mat_low, target_low = self.resetMatValue(dt, 'low', unit, sequenceForPosition,
                                                                roundLimit, percentForALevel, lowPriceForDt)
 
@@ -276,7 +282,7 @@ class Strategy():
                             shortPos, netPos, shortpnl, shortreturn, accumulateReturnWithExit, shortCashFlow = \
                                 self.exitPosition('short', dt, exitPrice, shortPos, netPos, accumulateReturn,
                                                   shortCashFlow, highPriceForDt, lowPriceForDt, target_high,
-                                                  shortPNL, shortInfo, shortTrade)
+                                                  shortPNL, shortInfo, shortTrade, shortpnl, shortreturn)
                             totalResult.append(
                                 [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
                                  accumulateReturnWithExit])
@@ -289,7 +295,7 @@ class Strategy():
                                 self.exitPosition('long', dt, exitPrice, longPos, netPos, accumulateReturn,
                                                   longCashFlow,
                                                   highPriceForDt, lowPriceForDt, target_low,
-                                                  longPNL, longInfo, longTrade)
+                                                  longPNL, longInfo, longTrade, longpnl, longreturn)
                             totalResult.append(
                                 [dt, shortPos, longPos, netPos, shortpnl, longpnl, shortreturn, longreturn,
                                  accumulateReturnWithExit])
