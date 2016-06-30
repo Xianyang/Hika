@@ -213,10 +213,10 @@ class Strategy():
 
                 # it means that mat_high and mat_low does not exist at this day
                 if mat_high is None:
-                    mat_high, target_high = self.resetMatValue(dt, 'high', unit, sequenceForPosition, roundLimit, percentForALevel)
+                    mat_high, target_high = self.resetMatValue(dt, 'high', unit, sequenceForPosition, roundLimit, percentForALevel, highPriceForDt)
 
                 if mat_low is None:
-                    mat_low, target_low = self.resetMatValue(dt, 'low', unit, sequenceForPosition, roundLimit, percentForALevel)
+                    mat_low, target_low = self.resetMatValue(dt, 'low', unit, sequenceForPosition, roundLimit, percentForALevel, lowPriceForDt)
 
                 # check if short exercise
                 shortInfo.append(
@@ -583,15 +583,12 @@ def startStrategy():
         print 'create directory fail'
         return None
     # strategy.run(unit, sequenceForPosition, roundLimit=4, takeProfit=0.03, percentForALevel=0.03, exitAtEnd=True)
-    # strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
+    strategy.run(unit, sequenceForPosition, roundLimit=7, takeProfit=0.025, percentForALevel=0.02, exitAtEnd=True)
 
-    '''threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-               roundLimit=7, takeProfit=0.025, positionLevel=0.02)
-    threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition,
-               roundLimit=6, takeProfit=0.025, positionLevel=0.025)'''
+    # threeMonthBackTest(poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition, roundLimit=7, takeProfit=0.025, positionLevel=0.02)
     # findBestParametersBackTest(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
-    threeMonthPortfolio(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
+    # threeMonthPortfolio(startdate, enddate, poslimit, capital, unit, mat_dateList, mat_value, marketDataFilePath, sequenceForPosition)
 
 
 if __name__ == "__main__":

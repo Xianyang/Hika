@@ -35,7 +35,7 @@ for i in range(_roundLimit):
 _shortInfoFileTitle = ['Date', 'high price', 'low price'] + targetHighLevels + \
                      ['order size', 'accumulated short position', 'short exit price']
 _longInfoFileTitle = ['Date', 'high price', 'low price'] + targetLowLevels + \
-                    ['order size', 'accumulated long position', 'long exit price']
+                    ['order size', 'accumulated short position', 'long exit price']
 _tradelogTitle = ['date', 'price', 'order']
 
 
@@ -98,13 +98,49 @@ def resetTargetList(matValue, positionType, roundLimit, positionLevel, sequenceF
     targetList = []
     for i in xrange(roundLimit):
         if positionType == 'high':
-            targetList.append([matValue * np.power((1 + positionLevel), i), -sequenceForPosition[i] * unit])
+            targetList.append(
+                [round(matValue * np.power((1 + positionLevel), i), 2), -sequenceForPosition[i] * unit])
         elif positionType == 'low':
-            targetList.append([matValue * np.power((1 - positionLevel), i), sequenceForPosition[i] * unit])
+            targetList.append(
+                [round(matValue * np.power((1 - positionLevel), i), 2), sequenceForPosition[i] * unit])
         else:
             raise ValueError('invalid type to reset target list')
 
     return targetList
+
+
+def resetMatValueAndTargetList(positionType, matPath, roundLimit, positionLevel, sequenceForPosition, unit, baseTarget=0):
+    # openDate = getOpenDateForADatetime(dt)
+    matHigh = getMatValue(dt, matPath, 'high')
+    matLow = getMatValue(dt, matPath, 'low')
+    if positionType == 'high':
+        if matHigh:
+            matValue = matHigh
+            targetList = resetTargetList(matValue, 'high', roundLimit, positionLevel,
+                                         sequenceForPosition, unit)
+            if baseTarget != 0:
+                while targetList[0][0] <= baseTarget:
+                    targetList = resetTargetList(targetList[0][0] * (1 + positionLevel), 'high',
+                                                 roundLimit, positionLevel, sequenceForPosition,
+                                                 unit)
+            return matValue, targetList
+        else:
+            return None, [[None, 0] for i in range(roundLimit)]
+    elif positionType == 'low':
+        if matLow:
+            matValue = matLow
+            targetList = resetTargetList(matValue, 'low', roundLimit, positionLevel,
+                                         sequenceForPosition, unit)
+            if baseTarget != 0:
+                while targetList[0][0] >= baseTarget:
+                    targetList = resetTargetList(targetList[0][0] * (1 - positionLevel), 'low',
+                                                 roundLimit, positionLevel, sequenceForPosition,
+                                                 unit)
+            return matValue, targetList
+        else:
+            return None, [[None, 0] for i in range(roundLimit)]
+    else:
+        return None, [[None, 0] for i in range(roundLimit)]
 
 
 class Strategy():
@@ -163,37 +199,7 @@ class Strategy():
         else:
             raise ValueError('invalid type to calculate take profit price')
 
-    def resetMatValueAndTargetList(self, positionType, baseTarget=0):
-        # openDate = getOpenDateForADatetime(self.dt)
-        matHigh = getMatValue(dt, self.matPath, 'high')
-        matLow = getMatValue(dt, self.matPath, 'low')
-        if positionType == 'high':
-            if matHigh:
-                matValue = matHigh
-                targetList = resetTargetList(matValue, 'high', self.roundLimit, self.positionLevel,
-                                             self.sequenceForPosition, self.unit)
-                if baseTarget != 0:
-                    while targetList[0][0] <= baseTarget:
-                        targetList = resetTargetList(targetList[0][0] * (1 + self.positionLevel), 'high',
-                                                     self.roundLimit, self.positionLevel, self.sequenceForPosition, self.unit)
-                return matValue, targetList
-            else:
-                return None, [[None, 0] for i in range(self.roundLimit)]
-        elif positionType == 'low':
-            if matLow:
-                matValue = matLow
-                targetList = resetTargetList(matValue, 'low', self.roundLimit, self.positionLevel,
-                                             self.sequenceForPosition, self.unit)
-                if baseTarget != 0:
-                    while targetList[0][0] >= baseTarget:
-                        targetList = resetTargetList(targetList[0][0] * (1 - self.positionLevel), 'low',
-                                                     self.roundLimit, self.positionLevel, self.sequenceForPosition, self.unit)
-                return matValue, targetList
-            else:
-                return None, [[None, 0] for i in range(self.roundLimit)]
-        else:
-            return None, [[None, 0] for i in range(self.roundLimit)]
-
+    # check if there is short exercise or long exercise
     def getExerciseList(self, targetList, positionType):
         exerciseList = []
         stopLoss = False
@@ -299,7 +305,8 @@ class Strategy():
             orders.append([exitPrice, self.shortPos, 'short_exit'])
             self.shortPos, shortpnl, shortReturn, self.shortCashFlow = \
                 self.exitPosition('short', exitPrice, self.shortPos, self.shortCashFlow, self.targetHighList, shortInfo, shortTradeLog)
-            self.firstTargetHigh, self.targetHighList = self.resetMatValueAndTargetList('high', highPriceForDt)
+            self.firstTargetHigh, self.targetHighList = resetMatValueAndTargetList('high', self.matPath, self.roundLimit,
+                                                                                   self.positionLevel, self.sequenceForPosition, self.unit, self.highPrice)
 
         # long exit
         if (longTakeProfitPrice and longTakeProfitPrice <= self.highPrice) or longStopLoss is True:
@@ -311,7 +318,8 @@ class Strategy():
             orders.append([exitPrice, self.longPos, 'long_exit'])
             self.longPos, longpnl, longReturn, self.longCashFlow = \
                 self.exitPosition('long', exitPrice, self.longPos, self.longCashFlow, self.targetLowList, longInfo, longTradeLog)
-            self.firstTargetLow, self.targetLowList = self.resetMatValueAndTargetList('low', lowPriceForDt)
+            self.firstTargetLow, self.targetLowList = resetMatValueAndTargetList('low', self.matPath, self.roundLimit,
+                                                                                 self.positionLevel, self.sequenceForPosition, self.unit, self.lowPrice)
 
         # write the output list
         writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
@@ -332,20 +340,15 @@ def start(dt, highPriceForDt, lowPriceForDt):
         with open(_cl1VariablesPckl) as f:
             accumulateReturn, shortPos, longPos, shortCashFlow, longCashFlow, firstTargetHigh, firstTargetLow, targetHighList, targetLowList = pickle.load(f)
             # print 'short position is now at %d, long position is now at %d' % (shortPos, longPos)
-            # todo change matsuba to current matsuba value
+            # check matsuba value. if the value is None, then the current mat value will be requested.
             if firstTargetHigh is None:
-                firstTargetHigh = getMatValue(dt, matFilePath, 'high')
-                targetHighList = resetTargetList(firstTargetHigh, 'high', roundLimit, positionLevel, sequenceForPosition, unit)
-                while targetHighList[0][0] and targetHighList[0][0] <= highPriceForDt:
-                    targetHighList = resetTargetList(targetHighList[0][0] * (1 + positionLevel), 'high',
-                                                 roundLimit, positionLevel, sequenceForPosition, unit)
+                firstTargetHigh, targetHighList = resetMatValueAndTargetList('high', matFilePath, roundLimit,
+                                                                             positionLevel, sequenceForPosition, unit, highPriceForDt)
 
             if firstTargetLow is None:
-                firstTargetLow = getMatValue(dt, matFilePath, 'low')
-                targetLowList = resetTargetList(firstTargetLow, 'low', roundLimit, positionLevel, sequenceForPosition, unit)
-                while targetLowList[0][0] and targetLowList[0][0] >= lowPriceForDt:
-                    targetLowList = resetTargetList(targetLowList[0][0] * (1 - positionLevel), 'low',
-                                                 roundLimit, positionLevel, sequenceForPosition, unit)
+                firstTargetLow, targetLowList = resetMatValueAndTargetList('low', matFilePath, roundLimit,
+                                                                           positionLevel, sequenceForPosition, unit, lowPriceForDt)
+            # todo remove the comment of print
             '''
             if firstTargetHigh and firstTargetLow:
                 print 'target high starts at %.2f, target low starts at %.2f' % (firstTargetHigh, firstTargetLow)
@@ -372,10 +375,11 @@ def start(dt, highPriceForDt, lowPriceForDt):
         shortPos, longPos = 0, 0
         shortCashFlow, longCashFlow = 0, 0
         # todo change matsuba to the start date
-        firstTargetHigh = getMatValue(dt, matFilePath, 'high')
-        firstTargetLow = getMatValue(dt, matFilePath, 'low')
-        targetHighList = resetTargetList(firstTargetHigh, 'high', roundLimit, positionLevel, sequenceForPosition, unit)
-        targetLowList = resetTargetList(firstTargetLow, 'low', roundLimit, positionLevel, sequenceForPosition, unit)
+        firstTargetHigh, targetHighList = resetMatValueAndTargetList('high', matFilePath, roundLimit, positionLevel,
+                                                                     sequenceForPosition, unit, highPriceForDt)
+        firstTargetLow, targetLowList = resetMatValueAndTargetList('low', matFilePath, roundLimit, positionLevel,
+                                                                   sequenceForPosition, unit, lowPriceForDt)
+        # todo remove the comment of print
         '''
         if firstTargetHigh and firstTargetLow:
             print 'target high starts at %.2f, target low starts at %.2f' % (firstTargetHigh, firstTargetLow)
@@ -393,8 +397,10 @@ def start(dt, highPriceForDt, lowPriceForDt):
                         capital, matFilePath, sequenceForPosition, unit, roundLimit, takeProfit, positionLevel,
                         highPriceForDt, lowPriceForDt, firstTargetHigh, firstTargetLow, targetHighList, targetLowList)
     orders = strategy.run()
-    if len(orders):
-        print orders
+    # if len(orders):
+        # this is the return orders of the strategy, please use this orders to do paper trading
+        # print orders
+
 
     # Step3: write the data back
     with open(_cl1VariablesPckl, 'w') as f:
@@ -409,7 +415,7 @@ if __name__ == '__main__':
 
     timeToTest = int((endDate - startDate).total_seconds() / timedelta(minutes=5).total_seconds())
 
-    # todo: change this to get the martket data
+    # todo: change this to get the martket data then you can call start()
     marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
     csvfile = pd.read_csv(marketDataFilePath)
 
