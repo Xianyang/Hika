@@ -41,7 +41,6 @@ _tradelogTitle = ['date', 'price', 'order']
 
 def writeOutputList(shortInfoList=[], longInfoList=[], shortTradeLogList=[], longTradeLogList=[]):
     # create 4 csv files to save trade info
-    # this method will only be called at the very first time the strategy runs
     pd.DataFrame(shortInfoList, columns=_shortInfoFileTitle).to_csv(_shortTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
     pd.DataFrame(longInfoList, columns=_longInfoFileTitle).to_csv(_longTradeInfoPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
     pd.DataFrame(shortTradeLogList, columns=_tradelogTitle).to_csv(_shortTradeLogPath, date_format="%Y-%m-%d %H:%M:%S", index=False)
@@ -92,6 +91,10 @@ def getMatValue(dt, matPath, positionType):
         return None
 
 
+def noneMatAndTargetList(roundLimit):
+    return None, [[None, 0] for i in range(roundLimit)]
+
+
 def resetTargetList(matValue, positionType, roundLimit, positionLevel, sequenceForPosition, unit):
     if matValue is None:
         return [[None, 0] for i in range(roundLimit)]
@@ -109,7 +112,7 @@ def resetTargetList(matValue, positionType, roundLimit, positionLevel, sequenceF
     return targetList
 
 
-def resetMatValueAndTargetList(positionType, matPath, roundLimit, positionLevel, sequenceForPosition, unit, baseTarget=0):
+def resetMatValueAndTargetList(positionType, matPath, roundLimit, positionLevel, sequenceForPosition, unit, baseTarget=-1):
     # openDate = getOpenDateForADatetime(dt)
     matHigh = getMatValue(dt, matPath, 'high')
     matLow = getMatValue(dt, matPath, 'low')
@@ -118,29 +121,27 @@ def resetMatValueAndTargetList(positionType, matPath, roundLimit, positionLevel,
             matValue = matHigh
             targetList = resetTargetList(matValue, 'high', roundLimit, positionLevel,
                                          sequenceForPosition, unit)
-            if baseTarget != 0:
+            if baseTarget != -1:
                 while targetList[0][0] <= baseTarget:
                     targetList = resetTargetList(targetList[0][0] * (1 + positionLevel), 'high',
-                                                 roundLimit, positionLevel, sequenceForPosition,
-                                                 unit)
+                                                 roundLimit, positionLevel, sequenceForPosition, unit)
             return matValue, targetList
         else:
-            return None, [[None, 0] for i in range(roundLimit)]
+            return noneMatAndTargetList(roundLimit)
     elif positionType == 'low':
         if matLow:
             matValue = matLow
             targetList = resetTargetList(matValue, 'low', roundLimit, positionLevel,
                                          sequenceForPosition, unit)
-            if baseTarget != 0:
+            if baseTarget != -1:
                 while targetList[0][0] >= baseTarget:
                     targetList = resetTargetList(targetList[0][0] * (1 - positionLevel), 'low',
-                                                 roundLimit, positionLevel, sequenceForPosition,
-                                                 unit)
+                                                 roundLimit, positionLevel, sequenceForPosition, unit)
             return matValue, targetList
         else:
-            return None, [[None, 0] for i in range(roundLimit)]
+            return noneMatAndTargetList(roundLimit)
     else:
-        return None, [[None, 0] for i in range(roundLimit)]
+        return noneMatAndTargetList(roundLimit)
 
 
 class Strategy():
@@ -260,8 +261,8 @@ class Strategy():
         if self.firstTargetHigh is None and self.firstTargetLow is None:
             return []
 
-        shortInfo, longInfo, shortTradeLog, longTradeLog = loadOutputList()
-        # shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
+        # shortInfo, longInfo, shortTradeLog, longTradeLog = loadOutputList()
+        shortInfo, longInfo, shortTradeLog, longTradeLog = [], [], [], []
 
         # calculate take profit price
         shortTakeProfitPrice = self.calculateTakeProfitPrice(self.shortPos, 'short')
@@ -294,7 +295,6 @@ class Strategy():
             longInfo[-1][-2] = self.longPos
             longInfo[-1][-1] = longTakeProfitPrice
 
-
         # short exit
         if (shortTakeProfitPrice and self.lowPrice <= shortTakeProfitPrice) or shortStopLoss is True:
             if self.lowPrice <= shortTakeProfitPrice:
@@ -322,7 +322,7 @@ class Strategy():
                                                                                  self.positionLevel, self.sequenceForPosition, self.unit, self.lowPrice)
 
         # write the output list
-        writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
+        # writeOutputList(shortInfo, longInfo, shortTradeLog, longTradeLog)
 
         return orders
 
@@ -390,7 +390,7 @@ def start(dt, highPriceForDt, lowPriceForDt):
                          firstTargetHigh, firstTargetLow, targetHighList, targetLowList], f)
 
         # create the output csv file
-        writeOutputList()
+        # writeOutputList()
 
     # Step2: use the target and market data to run the strategy
     strategy = Strategy(dt, poslimit, accumulateReturn, shortCashFlow, longCashFlow, shortPos, longPos,
@@ -416,8 +416,13 @@ if __name__ == '__main__':
     timeToTest = int((endDate - startDate).total_seconds() / timedelta(minutes=5).total_seconds())
 
     # todo: change this to get the martket data then you can call start()
-    marketDataFilePath = './Data/CL1 COMDTY_2016-12-31_2016-06-19_5Minutes_simplied.csv'
-    csvfile = pd.read_csv(marketDataFilePath)
+    # ------------GUIDE------------
+    # step1: get dt(datetime)
+    # step2: get high price and low price
+    # step3: use there three parameters to start the strategy---start(dt, highPriceForDt, lowPriceForDt)
+    # step4: you can delete or comment the following test code
+    # ---------END OF GUIDE--------
+    csvfile = pd.read_csv(_marketDataFilePath)
 
     for dataIndex in csvfile.index:
         dt = datetime.strptime(csvfile.loc[dataIndex, 'Date'][0:19], '%Y-%m-%d %H:%M:%S')
