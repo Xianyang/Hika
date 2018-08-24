@@ -1,5 +1,5 @@
 ## Report for Double Down Strategy
-###stragegy
+### stragegy
 - start date: 1/1/2016
 - end date: 31/5/2016
 - long at dmat_low, dmat_low - $1, ...
@@ -11,7 +11,7 @@
 - net position limit is 600
 - capital is $ 3M
  
-###result
+### result
 - **return**
 
 ![](./return_unit1.png)![](./return_unit10.png)
@@ -22,7 +22,7 @@
 ![](./position_unit1.png)![](./position_unit10.png)
 ![](./net_position.png)
 
-###analysis
+### analysis
 - Position
 	
 	From 5/1 to 22/1, the price keeps going down, so the program keeps taking long position. The program takes a total 512 position for unit 1 and 600 position for unit10 (hits the limit position)
